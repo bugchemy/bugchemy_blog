@@ -367,7 +367,7 @@ function InteractiveBackground() {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const isAuthPage = location.pathname.startsWith("/auth")|| location.pathname.startsWith("/cs");
+  const isAuthPage = location.pathname.startsWith("/auth") || location.pathname.startsWith("/cs") || location.pathname.startsWith("/*");
 
   // Apply dark theme by default for Auth and CS pages
 // Apply dark theme visually for Auth and CS pages without overwriting user preference
