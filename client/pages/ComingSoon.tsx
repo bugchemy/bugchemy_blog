@@ -47,7 +47,7 @@ export default function ComingSoon() {
               <br></br>
             </p>
             <p className="mt-5 text-lg text-muted-foreground max-w-prose font-bold">
-              We are launching soon ...
+              Bugchemy is launching soon ...
             </p>
           </div>
 
