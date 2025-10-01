@@ -1,0 +1,153 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    /* Bugchemy Light Theme (HSL) */
+    --background: 210 20% 98%; /* #F9FAFB */
+    --foreground: 210 13% 12%; /* #1B1F23 */
+
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 210 13% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 13% 12%;
+
+    --primary: 210 100% 52%; /* Accent 1: #0A84FF */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 13% 40%; /* Secondary text base for subtle UI */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 14% 40%; /* #4B5563 approx */
+
+    --accent: 162 86% 39%; /* Accent 2: #10B981 */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 33 100% 50%; /* Accent 3: #FF8C00 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 100% 52%;
+
+    --radius: 0.6rem;
+
+    /* Sidebar tokens based on light */
+    --sidebar-background: 210 20% 98%;
+    --sidebar-foreground: 215 14% 40%;
+    --sidebar-primary: 210 100% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 210 13% 12%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 210 100% 52%;
+  }
+
+  .dark {
+    /* Bugchemy Dark Theme (HSL) */
+    --background: 212 26% 7%; /* #0D1117 */
+    --foreground: 210 15% 82%; /* #C9D1D9 */
+
+    --card: 213 21% 11%; /* #161B22 */
+    --card-foreground: 210 15% 82%;
+
+    --popover: 213 21% 11%;
+    --popover-foreground: 210 15% 82%;
+
+    --primary: 212 100% 67%; /* Accent 1: #58A6FF */
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 210 9% 58%; /* #8B949E */
+    --secondary-foreground: 220 20% 10%;
+
+    --muted: 220 6% 20%;
+    --muted-foreground: 210 9% 58%;
+
+    --accent: 164 49% 48%; /* Accent 2: #3FB696 */
+    --accent-foreground: 220 20% 10%;
+
+    --destructive: 34 100% 65%; /* Accent 3: #FFA94C */
+    --destructive-foreground: 220 20% 10%;
+
+    --border: 215 14% 16%;
+    --input: 215 14% 16%;
+    --ring: 212 100% 67%;
+
+    --sidebar-background: 213 21% 11%;
+    --sidebar-foreground: 210 15% 82%;
+    --sidebar-primary: 212 100% 67%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 6% 20%;
+    --sidebar-accent-foreground: 210 15% 82%;
+    --sidebar-border: 220 6% 20%;
+    --sidebar-ring: 212 100% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    overflow-x: hidden;
+  }
+  html { overflow-x: hidden; }
+
+  code, pre, kbd, samp {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+
+  /* Highlight.js theme tuned to our design */
+  .hljs {
+    color: hsl(var(--foreground));
+  }
+  .hljs-comment, .hljs-quote { color: hsl(var(--muted-foreground)); }
+  .hljs-keyword, .hljs-selector-tag, .hljs-subst { color: hsl(var(--primary)); }
+  .hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable, .hljs-tag .hljs-attr { color: hsl(var(--accent)); }
+  .hljs-string, .hljs-doctag, .hljs-title, .hljs-section, .hljs-selector-id { color: hsl(var(--destructive)); }
+  .hljs-type, .hljs-class .hljs-title { color: hsl(var(--primary)); }
+  .hljs-attribute, .hljs-name, .hljs-regexp, .hljs-link, .hljs-symbol, .hljs-bullet, .hljs-built_in, .hljs-builtin-name { color: hsl(var(--accent)); }
+  .hljs-meta { color: hsl(var(--muted-foreground)); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: 700; }
+}
+
+@layer base {
+  .prose {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .prose pre {
+    overflow-x: auto;
+  }
+  .prose code {
+    word-break: break-word;
+  }
+  .prose table {
+    display: block;
+    overflow-x: auto;
+  }
+  .prose img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  @media (max-width: 360px) {
+    h1, h2, h3, p, li, a, blockquote { word-break: break-word; overflow-wrap: anywhere; }
+    .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+  }
+}
