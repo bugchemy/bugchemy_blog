@@ -5,8 +5,17 @@ import { cn } from "@/lib/utils";
 
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link to="/" className={cn("flex items-center gap-2", className)} aria-label="Bugchemy Home">
-      <img src="/web-app-manifest-192x192.png" alt="Bugchemy" className="h-7 w-7" loading="eager" />
+    <Link
+      to="/"
+      className={cn("flex items-center gap-2", className)}
+      aria-label="Bugchemy Home"
+    >
+      <img
+        src="/web-app-manifest-192x192.png"
+        alt="Bugchemy"
+        className="h-7 w-7"
+        loading="eager"
+      />
       <span className="font-semibold tracking-tight">Bugchemy</span>
     </Link>
   );
@@ -18,9 +27,11 @@ function ThemeToggle() {
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = stored ? stored === 'dark' : prefersDark;
-    document.documentElement.classList.toggle('dark', isDark);
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = stored ? stored === "dark" : prefersDark;
+    document.documentElement.classList.toggle("dark", isDark);
     setDark(isDark);
     setMounted(true);
   }, []);
@@ -28,18 +39,38 @@ function ThemeToggle() {
   const toggle = () => {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   if (!mounted) return null;
 
   return (
-    <Button onClick={toggle} variant="outline" size="icon" aria-label="Toggle theme">
+    <Button
+      onClick={toggle}
+      variant="outline"
+      size="icon"
+      aria-label="Toggle theme"
+    >
       {dark ? (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M21.64 13a9 9 0 01-10.63-10.63A9 9 0 1021.64 13z"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill="currentColor"
+        >
+          <path d="M21.64 13a9 9 0 01-10.63-10.63A9 9 0 1021.64 13z" />
+        </svg>
       ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M12 18a6 6 0 100-12 6 6 0 000 12z"/><path d="M12 2v2m0 16v2m8-10h2M2 12H0m16.95 6.95l1.41 1.41M5.64 5.64L4.22 4.22m12.73 0l1.41 1.41M5.64 18.36l-1.41 1.41"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill="currentColor"
+        >
+          <path d="M12 18a6 6 0 100-12 6 6 0 000 12z" />
+          <path d="M12 2v2m0 16v2m8-10h2M2 12H0m16.95 6.95l1.41 1.41M5.64 5.64L4.22 4.22m12.73 0l1.41 1.41M5.64 18.36l-1.41 1.41" />
+        </svg>
       )}
     </Button>
   );
@@ -52,7 +83,7 @@ function Header() {
       to={to}
       className={cn(
         "px-3 py-2 text-sm font-medium rounded-md hover:bg-accent/20",
-        location.pathname === to ? "text-primary" : "text-foreground/80",
+        location.pathname === to ? "text-primary" : "text-foreground/80"
       )}
     >
       {label}
@@ -65,18 +96,23 @@ function Header() {
         <div className="flex items-center gap-6">
           <Logo />
           <nav className="hidden md:flex items-center gap-1">
-            {link('/blog', 'Blog')}
-            {link('/about', 'About')}
-            {link('/newsletter', 'Newsletter')}
-            {link('/contact', 'Contact')}
-            {link('/admin', 'Admin')}
+            {link("/blog", "Blog")}
+            {link("/about", "About")}
+            {link("/newsletter", "Newsletter")}
+            {link("/contact", "Contact")}
+            {link("/admin", "Admin")}
           </nav>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/newsletter">
             <Button className="hidden sm:inline-flex">Subscribe</Button>
           </Link>
-          <Link to="/auth" className="hidden sm:block text-sm text-muted-foreground hover:text-primary">Login</Link>
+          <Link
+            to="/auth"
+            className="hidden sm:block text-sm text-muted-foreground hover:text-primary"
+          >
+            Login
+          </Link>
           <ThemeToggle />
         </div>
       </div>
@@ -90,12 +126,35 @@ function Footer() {
       <div className="container grid gap-6 md:grid-cols-2 items-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <img src="/favicon-96x96.png" alt="Bugchemy" className="h-5 w-5" />
-          <span>© {new Date().getFullYear()} Bugchemy. Experiment. Learn. Evolve.</span>
+          <span>
+            © {new Date().getFullYear()} Bugchemy. Experiment. Learn. Evolve.
+          </span>
         </div>
         <div className="flex gap-4 justify-start md:justify-end">
-          <a className="text-sm text-muted-foreground hover:text-primary" href="https://x.com" target="_blank" rel="noreferrer">X</a>
-          <a className="text-sm text-muted-foreground hover:text-primary" href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
-          <a className="text-sm text-muted-foreground hover:text-primary" href="https://linkedin.com" target="_blank" rel="noreferrer">LinkedIn</a>
+          <a
+            className="text-sm text-muted-foreground hover:text-primary"
+            href="https://x.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            X
+          </a>
+          <a
+            className="text-sm text-muted-foreground hover:text-primary"
+            href="https://github.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+          <a
+            className="text-sm text-muted-foreground hover:text-primary"
+            href="https://linkedin.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            LinkedIn
+          </a>
         </div>
       </div>
     </footer>
@@ -107,10 +166,12 @@ function InteractiveBackground() {
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefersReduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     const cvs = canvasRef.current;
     if (!cvs) return;
-    const ctx = cvs.getContext('2d');
+    const ctx = cvs.getContext("2d");
     if (!ctx) return;
 
     const DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -121,17 +182,19 @@ function InteractiveBackground() {
 
     const styles = getComputedStyle(document.documentElement);
     const parseHsl = (str: string) => {
-      const parts = str.split(' ').map((v) => parseFloat(v));
+      const parts = str.split(" ").map((v) => parseFloat(v));
       return { h: parts[0] || 0, s: parts[1] || 0, l: parts[2] || 0 };
     };
-    const hsla = (h: number, s: number, l: number, a: number) => `hsl(${h} ${s}% ${l}% / ${a})`;
-    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    const hsla = (h: number, s: number, l: number, a: number) =>
+      `hsl(${h} ${s}% ${l}% / ${a})`;
+    const clamp = (v: number, min: number, max: number) =>
+      Math.max(min, Math.min(max, v));
     const shiftColor = (
       base: { h: number; s: number; l: number },
       shift = 0,
       sMul = 1,
       lMul = 1,
-      a = 0.08,
+      a = 0.08
     ) => {
       const h2 = (base.h + shift + 360) % 360;
       const s2 = clamp(base.s * sMul, 0, 100);
@@ -139,8 +202,8 @@ function InteractiveBackground() {
       return hsla(h2, s2, l2, a);
     };
 
-    const accent = parseHsl(styles.getPropertyValue('--accent').trim());
-    const primary = parseHsl(styles.getPropertyValue('--primary').trim());
+    const accent = parseHsl(styles.getPropertyValue("--accent").trim());
+    const primary = parseHsl(styles.getPropertyValue("--primary").trim());
 
     type BlobSpec = {
       r: number;
@@ -151,11 +214,41 @@ function InteractiveBackground() {
     };
 
     const specs: BlobSpec[] = [
-      { r: 560, color: shiftColor(primary, 8, 1.0, 1.0, 0.045), amp: 180, speed: 0.025, phase: 0.3 },
-      { r: 500, color: shiftColor(primary, -18, 0.95, 1.05, 0.05), amp: 160, speed: 0.03, phase: 1.1 },
-      { r: 420, color: shiftColor(accent, 12, 1.0, 1.0, 0.06), amp: 140, speed: 0.04, phase: 2.0 },
-      { r: 380, color: shiftColor(accent, -10, 0.95, 1.05, 0.065), amp: 130, speed: 0.045, phase: 2.8 },
-      { r: 320, color: shiftColor(accent, 0, 1.0, 1.0, 0.08), amp: 120, speed: 0.055, phase: 3.6 },
+      {
+        r: 560,
+        color: shiftColor(primary, 8, 1.0, 1.0, 0.045),
+        amp: 180,
+        speed: 0.025,
+        phase: 0.3,
+      },
+      {
+        r: 500,
+        color: shiftColor(primary, -18, 0.95, 1.05, 0.05),
+        amp: 160,
+        speed: 0.03,
+        phase: 1.1,
+      },
+      {
+        r: 420,
+        color: shiftColor(accent, 12, 1.0, 1.0, 0.06),
+        amp: 140,
+        speed: 0.04,
+        phase: 2.0,
+      },
+      {
+        r: 380,
+        color: shiftColor(accent, -10, 0.95, 1.05, 0.065),
+        amp: 130,
+        speed: 0.045,
+        phase: 2.8,
+      },
+      {
+        r: 320,
+        color: shiftColor(accent, 0, 1.0, 1.0, 0.08),
+        amp: 120,
+        speed: 0.055,
+        phase: 3.6,
+      },
     ];
 
     const pointer = { x: w / 2, y: h / 2 };
@@ -180,7 +273,7 @@ function InteractiveBackground() {
         });
       }
     };
-    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener("mousemove", onMove, { passive: true });
 
     const onResize = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -189,7 +282,7 @@ function InteractiveBackground() {
       cvs.style.width = `${window.innerWidth}px`;
       cvs.style.height = `${window.innerHeight}px`;
     };
-    window.addEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
 
     let raf = 0;
     let running = true;
@@ -199,7 +292,7 @@ function InteractiveBackground() {
       smooth.y += (pointer.y - smooth.y) * 0.08;
 
       ctx.clearRect(0, 0, w, h);
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = "screen";
 
       for (let i = 0; i < specs.length; i++) {
         const s = specs[i];
@@ -211,14 +304,14 @@ function InteractiveBackground() {
         const radius = s.r * DPR;
         const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
         g.addColorStop(0, s.color);
-        g.addColorStop(1, 'transparent');
+        g.addColorStop(1, "transparent");
         ctx.fillStyle = g as any;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = "source-over";
     };
 
     const loop = (ts: number) => {
@@ -236,7 +329,7 @@ function InteractiveBackground() {
         raf = requestAnimationFrame(loop);
       }
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener("visibilitychange", onVisibility);
 
     if (!prefersReduced) {
       raf = requestAnimationFrame(loop);
@@ -245,15 +338,18 @@ function InteractiveBackground() {
     }
 
     return () => {
-      window.removeEventListener('mousemove', onMove as any);
-      window.removeEventListener('resize', onResize);
-      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener("mousemove", onMove as any);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+    >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       <div
         ref={gridRef}
@@ -261,8 +357,8 @@ function InteractiveBackground() {
         style={{
           backgroundImage:
             "linear-gradient(to right, hsl(var(--foreground)/0.06) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--foreground)/0.06) 1px, transparent 1px)",
-          backgroundSize: '32px 32px',
-          willChange: 'transform',
+          backgroundSize: "32px 32px",
+          willChange: "transform",
         }}
       />
     </div>
@@ -270,12 +366,28 @@ function InteractiveBackground() {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const isAuthPage = location.pathname.startsWith("/auth")|| location.pathname.startsWith("/cs");
+
+  // Apply dark theme by default for Auth and CS pages
+// Apply dark theme visually for Auth and CS pages without overwriting user preference
+  useEffect(() => {
+    if (isAuthPage) {
+      document.documentElement.classList.add("dark");
+    } else {
+      // restore based on stored preference or system
+      const stored = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const isDark = stored ? stored === "dark" : prefersDark;
+      document.documentElement.classList.toggle("dark", isDark);
+    }
+  }, [isAuthPage]);
   return (
     <div className="min-h-screen flex flex-col">
       <InteractiveBackground />
-      <Header />
+      {!isAuthPage && <Header />}
       <main className="flex-1">{children}</main>
-      <Footer />
+      {!isAuthPage && <Footer />}
     </div>
   );
 }
