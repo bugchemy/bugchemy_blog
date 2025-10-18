@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import Markdown from "@/components/Markdown";
-import { Content, Post, Snippet } from "@/lib/content";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabaseClient";
+import Markdown from "@/components/Markdown";
+import { TagSelector } from "@/components/TagSelector";
+import { useNavigate } from "react-router-dom";
 
 function slugify(s: string) {
   return s
@@ -21,191 +22,248 @@ function slugify(s: string) {
 }
 
 export default function Admin() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [tags, setTags] = useState<string>("");
   const [cover, setCover] = useState("");
-  const [content, setContent] = useState("# Hello Bugchemy!\n\n```ts\nconsole.log('Hello, world!')\n```\n");
-  const [author, setAuthor] = useState("Saurabh Katiyal");
+  const [content, setContent] = useState("");
+  const [customSlug, setCustomSlug] = useState("");
+
+  const [articles, setArticles] = useState<any[]>([]);
+  const [aiJobs, setAiJobs] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [tab, setTab] = useState("new");
+  const [fsOpen, setFsOpen] = useState(false);
 
   const slug = useMemo(() => slugify(title), [title]);
 
-  const [snipName, setSnipName] = useState("");
-  const [snipLang, setSnipLang] = useState("typescript");
-  const [snipCode, setSnipCode] = useState("console.log('Bugchemy');\n");
-  const [customSlug, setCustomSlug] = useState("");
-
-  const [posts, setPosts] = useState<Post[]>(Content.getPosts());
-  const [snippets, setSnippets] = useState<Snippet[]>(Content.getSnippets());
-  const [fsOpen, setFsOpen] = useState(false);
-  const [tab, setTab] = useState("new");
-  const [editingId, setEditingId] = useState<string | null>(null);
-
+  /** 🔑 Check admin access */
   useEffect(() => {
-    const handler = () => {
-      setPosts(Content.getPosts());
-      setSnippets(Content.getSnippets());
-    };
-    window.addEventListener("bugchemy:content:update", handler as any);
-    return () => window.removeEventListener("bugchemy:content:update", handler as any);
+    const sessionUser = supabase.auth.getUser().then((res) => {
+      if (res.data.user) {
+        setUser(res.data.user);
+        fetchProfile(res.data.user.id);
+      } else {
+        navigate("/"); // redirect if not logged in
+      }
+    });
   }, []);
 
-  const savePost = () => {
-    const effectiveSlug = (customSlug || slug).trim();
-    const post = Content.upsertPost({
-      id: editingId ?? undefined,
-      slug: effectiveSlug || slug,
-      title,
-      excerpt,
-      author: { name: author },
-      tags: tags
+  const fetchProfile = async (id: string) => {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", id).single();
+    if (error || !data?.is_admin) {
+      alert("You are not an admin");
+      navigate("/"); // non-admin redirect
+    } else {
+      setIsAdmin(true);
+      fetchArticles();
+      fetchAIJobs();
+    }
+  };
+
+  /** 📝 Fetch all articles */
+  const fetchArticles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("articles")
+        .select(`
+          *,
+          article_tags(tag_id, tags(name))
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setArticles(data || []);
+    } catch (err) {
+      console.error("Error fetching articles:", err);
+    }
+  };
+
+  /** 🤖 Fetch AI jobs */
+  const fetchAIJobs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ai_jobs")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setAiJobs(data || []);
+    } catch (err) {
+      console.error("Error fetching AI jobs:", err);
+    }
+  };
+
+  /** 💾 Save or update article */
+  const saveArticle = async () => {
+    if (!title.trim()) return alert("Title is required");
+
+    try {
+      let articleId = editingId;
+
+      // 1️⃣ Insert or update article
+      const articlePayload = {
+        title,
+        excerpt,
+        content,
+        cover,
+        author_id: user?.id,
+        slug: customSlug || slug,
+      };
+
+      if (editingId) {
+        const { error } = await supabase.from("articles").update(articlePayload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("articles").insert(articlePayload).select("id").single();
+        if (error) throw error;
+        articleId = data.id;
+      }
+
+      // 2️⃣ Handle tags
+      const tagNames = tags
         .split(",")
         .map((t) => t.trim())
-        .filter(Boolean),
-      cover,
-      content,
-    });
-    setEditingId(null);
-    setTitle("");
-    setExcerpt("");
-    setTags("");
-    setCover("");
-    setContent("");
-    setPosts(Content.getPosts());
-    setTab("all");
-    alert(`${editingId ? "Updated" : "Saved"}: ${post.title}`);
+        .filter(Boolean);
+
+      const tagIds: string[] = [];
+      for (const name of tagNames) {
+        const { data: existingTag } = await supabase.from("tags").select("id").eq("name", name).single();
+        let tagId = existingTag?.id;
+        if (!tagId) {
+          const { data: newTag } = await supabase.from("tags").insert({ name }).select("id").single();
+          tagId = newTag.id;
+        }
+        tagIds.push(tagId);
+      }
+
+      // 3️⃣ Delete old article_tags
+      await supabase.from("article_tags").delete().eq("article_id", articleId);
+
+      // 4️⃣ Insert new article_tags
+      const articleTagsPayload = tagIds.map((id) => ({ article_id: articleId, tag_id: id }));
+      if (articleTagsPayload.length > 0) {
+        await supabase.from("article_tags").insert(articleTagsPayload);
+      }
+
+      // Reset form & refresh
+      setEditingId(null);
+      setTitle("");
+      setExcerpt("");
+      setContent("");
+      setTags("");
+      setCover("");
+      setCustomSlug("");
+      fetchArticles();
+      alert(editingId ? "Article updated" : "Article created");
+      setTab("all");
+    } catch (err: any) {
+      console.error("Error saving article:", err);
+      alert(err.message || "Error saving article");
+    }
   };
 
-  const saveSnippet = () => {
-    Content.upsertSnippet({ name: snipName, language: snipLang, code: snipCode });
-    setSnipName("");
-    setSnipCode("");
+  /** 🗑 Delete article */
+  const deleteArticle = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    await supabase.from("articles").delete().eq("id", id);
+    await fetchArticles();
   };
 
-  const exportData = () => {
-    const data = JSON.stringify(Content.export(), null, 2);
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bugchemy-content.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  /** ✅ Approve AI job as article */
+  const approveAIJob = async (job: any) => {
+    if (!confirm("Approve this AI draft as an article?")) return;
+
+    const { data, error } = await supabase
+      .from("articles")
+      .insert({
+        title: job.topic || job.prompt.slice(0, 50),
+        content: job.result_summary || job.prompt,
+        author_id: user?.id,
+        slug: slugify(job.topic || job.prompt.slice(0, 50)),
+      })
+      .select("id")
+      .single();
+
+    if (error) return alert(error.message);
+
+    // Optionally, you could update ai_jobs.article_id to link
+    await supabase.from("ai_jobs").update({ article_id: data.id, status: "approved" }).eq("id", job.id);
+
+    fetchAIJobs();
+    fetchArticles();
+    alert("AI draft approved as article");
   };
 
-  const importData = async (file: File) => {
-    const text = await file.text();
-    const db = JSON.parse(text);
-    Content.import(db);
-    setPosts(Content.getPosts());
-    setSnippets(Content.getSnippets());
+  /** Load article into form for editing */
+  const editArticle = (a: any) => {
+    setEditingId(a.id);
+    setTitle(a.title);
+    setExcerpt(a.excerpt);
+    setContent(a.content);
+    setCover(a.cover || "");
+    setTags(a.article_tags?.map((t: any) => t.tags.name).join(", ") || "");
+    setCustomSlug(a.slug || "");
+    setTab("new");
   };
 
-  const insertSnippet = (s: Snippet) => {
-    const block = `\n\n\u0060\u0060\u0060${s.language}\n${s.code}\n\u0060\u0060\u0060\n`;
-    setContent((c) => c + block);
-  };
+  if (!isAdmin) return null; // render nothing until admin check completes
 
   return (
     <Layout>
-      <SEO title="Bugchemy Admin" description="Create posts and manage code snippets" />
+      <SEO title="Admin Panel" description="Manage articles and AI drafts" />
       <section className="container px-4 py-10">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-3xl font-extrabold tracking-tight">Admin</h1>
-          <div className="flex gap-2 flex-wrap">
-            <Dialog open={fsOpen} onOpenChange={setFsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="secondary">Full Screen Preview</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-none w-screen h-screen sm:rounded-none p-0">
-                <div className="h-full flex flex-col">
-                  <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur px-6 py-3 flex items-center justify-between">
-                    <DialogTitle className="font-semibold">Live Preview</DialogTitle>
-                    <div className="text-xs text-muted-foreground">/{slug || 'untitled'}</div>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    <article className="container py-8">
-                      <div className="prose prose-slate dark:prose-invert max-w-none prose-code:font-mono prose-pre:bg-transparent">
-                        <Markdown content={content} />
-                      </div>
-                    </article>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" onClick={() => Content.clear()}>Clear All</Button>
-            <Button variant="outline" onClick={exportData}>Export JSON</Button>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files && importData(e.target.files[0])} />
-              <span className="rounded-md border px-3 py-2 cursor-pointer">Import JSON</span>
-            </label>
-          </div>
-        </div>
+        <h1 className="text-3xl font-extrabold mb-6">Admin Panel</h1>
 
-        <Tabs value={tab} onValueChange={setTab} className="mt-8">
-          <TabsList className="w-full overflow-x-auto whitespace-nowrap">
-            <TabsTrigger value="new">{editingId ? "Edit Post" : "New Post"}</TabsTrigger>
-            <TabsTrigger value="snippets">Snippets</TabsTrigger>
-            <TabsTrigger value="all">All Posts</TabsTrigger>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="new">{editingId ? "Edit Article" : "New Article"}</TabsTrigger>
+            <TabsTrigger value="all">All Articles</TabsTrigger>
+            <TabsTrigger value="ai">AI Drafts</TabsTrigger>
           </TabsList>
 
+          {/* NEW / EDIT ARTICLE */}
           <TabsContent value="new" className="mt-6">
             <div className="grid gap-6 lg:grid-cols-3">
               <Card className="p-6 lg:col-span-2">
                 <div className="grid gap-4">
                   <div>
-                    <Label htmlFor="title">Title</Label>
-                    <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Post title" />
+                    <Label>Title</Label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} />
                   </div>
                   <div>
-                    <Label htmlFor="content">Content (Markdown + GFM)</Label>
-                    <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} rows={18} className="font-mono" />
+                    <Label>Content (Markdown)</Label>
+                    <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={18} className="font-mono" />
                   </div>
                 </div>
               </Card>
 
               <div className="grid gap-6">
                 <Card className="p-6">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <h3 className="text-base font-semibold">Post settings</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={() => setFsOpen(true)}>Preview</Button>
-                      <Button size="sm" onClick={savePost}>{editingId ? "Update" : "Publish"}</Button>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold">Settings</h3>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setFsOpen(true)}>Preview</Button>
+                      <Button size="sm" onClick={saveArticle}>{editingId ? "Update" : "Publish"}</Button>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-3">
-                    <div>
-                      <Label htmlFor="excerpt">Excerpt</Label>
-                      <Textarea id="excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary" rows={3} />
-                    </div>
-                    <div>
-                      <Label htmlFor="author">Author</Label>
-                      <Input id="author" value={author} onChange={(e) => setAuthor(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label htmlFor="tags">Tags (comma separated)</Label>
-                      <Input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="ai, devops, logs" />
-                    </div>
-                    <div>
-                      <Label htmlFor="slug">Custom slug (optional)</Label>
-                      <Input id="slug" placeholder={slug || 'generated-from-title'} value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} />
-                      <p className="mt-1 text-xs text-muted-foreground">Current: <span className="font-mono">/{(customSlug || slug) || '—'}</span></p>
-                    </div>
-                    <div>
-                      <Label htmlFor="cover">Header image URL</Label>
-                      <Input id="cover" value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://..." />
-                      {cover ? (
-                        <div className="mt-2 rounded-md border overflow-hidden">
-                          <img src={cover} alt="Header preview" className="max-h-40 w-full object-cover" />
-                        </div>
-                      ) : null}
-                    </div>
+                  <div className="grid gap-3">
+                    <Label>Excerpt</Label>
+                    <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={3} />
+                    <Label>Cover URL</Label>
+                    <Input value={cover} onChange={(e) => setCover(e.target.value)} />
+                    <Label>Custom Slug</Label>
+                    <Input value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} placeholder={slug || "generated-from-title"} />
+                    <Label>Tags</Label>
+                    <TagSelector value={tags} onChange={setTags} />
                   </div>
                 </Card>
 
                 <Card className="p-6">
-                  <h3 className="text-base font-semibold">Live preview</h3>
-                  <div className="mt-4 prose prose-slate dark:prose-invert max-w-none">
+                  <h3 className="font-semibold">Live Preview</h3>
+                  <div className="mt-4 prose dark:prose-invert max-w-none">
                     <Markdown content={content} />
                   </div>
                 </Card>
@@ -213,74 +271,49 @@ export default function Admin() {
             </div>
           </TabsContent>
 
-          <TabsContent value="snippets" className="mt-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card className="p-6">
-                <div className="grid gap-4">
+          {/* ALL ARTICLES */}
+          <TabsContent value="all" className="mt-6">
+            <div className="grid gap-4">
+              {articles.map((a) => (
+                <Card key={a.id} className="p-4 flex justify-between items-center">
                   <div>
-                    <Label htmlFor="sname">Name</Label>
-                    <Input id="sname" value={snipName} onChange={(e) => setSnipName(e.target.value)} placeholder="Snippet name" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="slang">Language</Label>
-                      <Input id="slang" value={snipLang} onChange={(e) => setSnipLang(e.target.value)} placeholder="typescript, python, bash, ..." />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="scode">Code</Label>
-                    <Textarea id="scode" value={snipCode} onChange={(e) => setSnipCode(e.target.value)} rows={12} className="font-mono" />
+                    <div className="font-semibold">{a.title}</div>
+                    <div className="text-xs text-muted-foreground">{a.article_tags?.map((t: any) => t.tags.name).join(", ")}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={saveSnippet}>Save Snippet</Button>
+                    <Button size="sm" onClick={() => editArticle(a)}>Edit</Button>
+                    <Button size="sm" variant="destructive" onClick={() => deleteArticle(a.id)}>Delete</Button>
                   </div>
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold">Saved Snippets</h3>
-                <div className="mt-4 grid gap-3">
-                  {snippets.map((s) => (
-                    <div key={s.id} className="rounded-md border p-4">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="font-medium flex items-center gap-2">
-                          {s.name}
-                          <Badge variant="secondary" className="capitalize bg-accent/15 text-accent">{s.language}</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => insertSnippet(s)}>Insert</Button>
-                          <Button size="sm" variant="destructive" onClick={() => Content.deleteSnippet(s.id)}>Delete</Button>
-                        </div>
-                      </div>
-                      <pre className="mt-3 overflow-x-auto text-xs"><code>{s.code}</code></pre>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
-          <TabsContent value="all" className="mt-6">
+          {/* AI JOBS */}
+          <TabsContent value="ai" className="mt-6">
             <div className="grid gap-4">
-              {posts.map((p) => (
-                <div key={p.id} className="rounded-lg border p-4 flex items-center justify-between">
+              {aiJobs.map((job) => (
+                <Card key={job.id} className="p-4 flex justify-between items-center">
                   <div>
-                    <div className="font-semibold">{p.title}</div>
-                    <div className="text-xs text-muted-foreground">/{p.slug} • {p.readingTime} min • {p.tags.join(', ')}</div>
+                    <div className="font-semibold">{job.topic || job.prompt.slice(0, 50)}</div>
+                    <div className="text-xs text-muted-foreground">{job.result_summary?.slice(0, 100)}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => (window.location.href = `/blog/${p.slug}`)}>Open</Button>
-                    <Button size="sm" variant="secondary" onClick={() => { setEditingId(p.id); setTitle(p.title); setExcerpt(p.excerpt); setAuthor(p.author.name); setTags(p.tags.join(', ')); setCover(p.cover || ''); setContent(p.content); setTab('new'); }}>Edit</Button>
-                    <Button size="sm" variant="destructive" onClick={() => Content.deletePost(p.id)}>Delete</Button>
+                    <Button size="sm" onClick={() => approveAIJob(job)}>Approve</Button>
                   </div>
-                </div>
+                </Card>
               ))}
-              {posts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No posts yet. Create one in the New Post tab.</p>
-              ) : null}
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* FULLSCREEN PREVIEW */}
+        <Dialog open={fsOpen} onOpenChange={setFsOpen}>
+          <DialogContent className="w-full max-w-5xl h-[90vh] overflow-auto">
+            <DialogTitle>Preview: {title}</DialogTitle>
+            <Markdown content={content} />
+          </DialogContent>
+        </Dialog>
       </section>
     </Layout>
   );

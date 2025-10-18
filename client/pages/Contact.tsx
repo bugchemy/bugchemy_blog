@@ -1,9 +1,7 @@
-import Placeholder from "@/components/Placeholder";
+import { LogoLoader } from "@/components/LogoLoader";
+
 export default function Contact() {
   return (
-    <Placeholder
-      title="Contact"
-      description="Send suggestions or feedback. Follow us on X, GitHub, and LinkedIn."
-    />
+    <LogoLoader size="lg" text="Brewing your article..." speed={1} fullscreen />
   );
 }
