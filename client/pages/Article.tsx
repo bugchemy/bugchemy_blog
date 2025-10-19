@@ -129,7 +129,7 @@ export default function Article(): JSX.Element {
         // --- Related articles
         const { data: relatedData } = await supabase
           .from("articles")
-          .select("id, title, slug, excerpt, cover_url, published_at")
+          .select("id, title, slug, excerpt, published_at")
           .neq("slug", slug)
           .eq("status", "published")
           .eq("visibility", "public")

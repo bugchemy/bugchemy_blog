@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+"use client";
+import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,313 +8,279 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import UserManagement from "@/components/admin/UserManagement";
+import TagManager from "@/components/admin/TagManager";
+import AIArticleApproval from "@/components/admin/AIArticleApproval";
+import ArticlesManager from "@/components/admin/ArticlesManager";
 import { supabase } from "@/lib/supabaseClient";
-import Markdown from "@/components/Markdown";
-import { TagSelector } from "@/components/TagSelector";
-import { useNavigate } from "react-router-dom";
 
 function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
 export default function Admin() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-
+  // Basic states
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [tags, setTags] = useState<string>("");
   const [cover, setCover] = useState("");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState("# Hello Bugchemy!\n\n```ts\nconsole.log('Hello, world!')\n```\n");
+  const [author, setAuthor] = useState("Saurabh Katiyal");
   const [customSlug, setCustomSlug] = useState("");
-
-  const [articles, setArticles] = useState<any[]>([]);
-  const [aiJobs, setAiJobs] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [tab, setTab] = useState("new");
-  const [fsOpen, setFsOpen] = useState(false);
+
+  const [posts, setPosts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [tagsData, setTagsData] = useState<any[]>([]);
+  const [aiJobs, setAIJobs] = useState<any[]>([]);
+  const [tab, setTab] = useState("dashboard");
+  const [loading, setLoading] = useState(false);
 
   const slug = useMemo(() => slugify(title), [title]);
 
-  /** 🔑 Check admin access */
+  // ---- Fetch all data ----
   useEffect(() => {
-    const sessionUser = supabase.auth.getUser().then((res) => {
-      if (res.data.user) {
-        setUser(res.data.user);
-        fetchProfile(res.data.user.id);
-      } else {
-        navigate("/"); // redirect if not logged in
-      }
-    });
+    fetchAll();
   }, []);
 
-  const fetchProfile = async (id: string) => {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", id).single();
-    if (error || !data?.is_admin) {
-      alert("You are not an admin");
-      navigate("/"); // non-admin redirect
-    } else {
-      setIsAdmin(true);
-      fetchArticles();
-      fetchAIJobs();
-    }
+  const fetchAll = async () => {
+    setLoading(true);
+
+    // Fetch articles with author + tags
+    //const { data: articles, error: artErr } = await supabase
+    //  .from("articles")
+   //   .select(`
+    //    *,
+    //    profiles(display_name, id),
+    //    article_tags(tag_id),
+    //    tags:article_tags(tag_id, tags(name, id))
+    //  `)
+    //  .order("created_at", { ascending: false });
+    //if (artErr) console.error("Error fetching articles:", artErr);
+
+    // Fetch tags
+    const { data: tagsRes, error: tagErr } = await supabase.from("tags").select("*");
+    if (tagErr) console.error("Error fetching tags:", tagErr);
+
+    // Fetch users
+    const { data: profiles, error: profErr } = await supabase.from("profiles").select("*");
+   if (profErr) console.error("Error fetching profiles:", profErr);
+
+    // Fetch AI jobs
+    const { data: jobs, error: jobErr } = await supabase.from("ai_jobs").select("*").order("created_at", { ascending: false });
+    if (jobErr) console.error("Error fetching AI jobs:", jobErr);
+
+    //setPosts(articles || []);
+    setTagsData(tagsRes || []);
+    setUsers(profiles || []);
+    setAIJobs(jobs || []);
+    setLoading(false);
   };
 
-  /** 📝 Fetch all articles */
-  const fetchArticles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("articles")
-        .select(`
-          *,
-          article_tags(tag_id, tags(name))
-        `)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setArticles(data || []);
-    } catch (err) {
-      console.error("Error fetching articles:", err);
-    }
-  };
+  // ---- Save or update post ----
+  const savePost = async () => {
+    const effectiveSlug = (customSlug || slug).trim();
+    const tagNames = tags.split(",").map((t) => t.trim()).filter(Boolean);
 
-  /** 🤖 Fetch AI jobs */
-  const fetchAIJobs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("ai_jobs")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setAiJobs(data || []);
-    } catch (err) {
-      console.error("Error fetching AI jobs:", err);
-    }
-  };
-
-  /** 💾 Save or update article */
-  const saveArticle = async () => {
-    if (!title.trim()) return alert("Title is required");
-
-    try {
-      let articleId = editingId;
-
-      // 1️⃣ Insert or update article
-      const articlePayload = {
-        title,
-        excerpt,
-        content,
-        cover,
-        author_id: user?.id,
-        slug: customSlug || slug,
-      };
-
-      if (editingId) {
-        const { error } = await supabase.from("articles").update(articlePayload).eq("id", editingId);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from("articles").insert(articlePayload).select("id").single();
-        if (error) throw error;
-        articleId = data.id;
-      }
-
-      // 2️⃣ Handle tags
-      const tagNames = tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-
-      const tagIds: string[] = [];
-      for (const name of tagNames) {
-        const { data: existingTag } = await supabase.from("tags").select("id").eq("name", name).single();
-        let tagId = existingTag?.id;
-        if (!tagId) {
-          const { data: newTag } = await supabase.from("tags").insert({ name }).select("id").single();
-          tagId = newTag.id;
+    // Find or create tags
+    const tagIds: number[] = [];
+    for (const name of tagNames) {
+      let tag = tagsData.find((t: any) => t.name === name);
+      if (!tag) {
+        const { data: inserted, error } = await supabase.from("tags").insert({ name }).select().single();
+        if (!error && inserted) {
+          tagIds.push(inserted.id);
         }
-        tagIds.push(tagId);
+      } else {
+        tagIds.push(tag.id);
       }
-
-      // 3️⃣ Delete old article_tags
-      await supabase.from("article_tags").delete().eq("article_id", articleId);
-
-      // 4️⃣ Insert new article_tags
-      const articleTagsPayload = tagIds.map((id) => ({ article_id: articleId, tag_id: id }));
-      if (articleTagsPayload.length > 0) {
-        await supabase.from("article_tags").insert(articleTagsPayload);
-      }
-
-      // Reset form & refresh
-      setEditingId(null);
-      setTitle("");
-      setExcerpt("");
-      setContent("");
-      setTags("");
-      setCover("");
-      setCustomSlug("");
-      fetchArticles();
-      alert(editingId ? "Article updated" : "Article created");
-      setTab("all");
-    } catch (err: any) {
-      console.error("Error saving article:", err);
-      alert(err.message || "Error saving article");
     }
+
+    const articleData = {
+      title,
+      slug: effectiveSlug,
+      excerpt,
+      content,
+      cover_url: cover,
+      visibility: "public",
+      status: "published",
+      author_id: users.find((u) => u.display_name === author)?.id || null,
+    };
+
+    let articleId = editingId;
+    if (editingId) {
+      const { error } = await supabase.from("articles").update(articleData).eq("id", editingId);
+      if (error) console.error(error);
+    } else {
+      const { data, error } = await supabase.from("articles").insert(articleData).select().single();
+      if (!error && data) articleId = data.id;
+    }
+
+    if (articleId && tagIds.length > 0) {
+      await supabase.from("article_tags").delete().eq("article_id", articleId);
+      const tagLinks = tagIds.map((tid) => ({ article_id: articleId, tag_id: tid }));
+      await supabase.from("article_tags").insert(tagLinks);
+    }
+
+    setEditingId(null);
+    setTitle("");
+    setExcerpt("");
+    setTags("");
+    setCover("");
+    setContent("");
+    await fetchAll();
+    setTab("articles");
+    alert(`${editingId ? "Updated" : "Saved"}: ${title}`);
   };
 
-  /** 🗑 Delete article */
-  const deleteArticle = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
+  // ---- Edit post ----
+  const editPost = (post: any) => {
+    setEditingId(post.id);
+    setTitle(post.title);
+    setExcerpt(post.excerpt);
+    setAuthor(post.profiles?.display_name || "");
+    const postTags = post.tags?.map((t: any) => t.tags.name) || [];
+    setTags(postTags.join(", "));
+    setCover(post.cover_url || "");
+    setContent(post.content);
+    setTab("new");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ---- Delete post ----
+  const deletePost = async (id: string) => {
     await supabase.from("articles").delete().eq("id", id);
-    await fetchArticles();
+    await fetchAll();
   };
 
-  /** ✅ Approve AI job as article */
-  const approveAIJob = async (job: any) => {
-    if (!confirm("Approve this AI draft as an article?")) return;
+  // ---- Toggle visibility ----
+  const toggleVisibility = async (id: string, visible: boolean) => {
+    await supabase.from("articles").update({ visibility: visible ? "public" : "private" }).eq("id", id);
+    await fetchAll();
+  };
 
-    const { data, error } = await supabase
+  // ---- AI Job Approve / Reject / Delete ----
+  const approveAIJob = async (jobId: string, customSlug?: string) => {
+    const { data: job } = await supabase.from("ai_jobs").select("*").eq("id", jobId).single();
+    if (!job) return;
+
+    const { data: newArticle } = await supabase
       .from("articles")
       .insert({
-        title: job.topic || job.prompt.slice(0, 50),
-        content: job.result_summary || job.prompt,
-        author_id: user?.id,
-        slug: slugify(job.topic || job.prompt.slice(0, 50)),
+        title: job.topic || "AI Generated",
+        content: job.result_summary || "",
+        slug: customSlug || slugify(job.topic || `ai-${Date.now()}`),
+        status: "published",
+        visibility: "public",
       })
-      .select("id")
+      .select()
       .single();
 
-    if (error) return alert(error.message);
-
-    // Optionally, you could update ai_jobs.article_id to link
-    await supabase.from("ai_jobs").update({ article_id: data.id, status: "approved" }).eq("id", job.id);
-
-    fetchAIJobs();
-    fetchArticles();
-    alert("AI draft approved as article");
+    await supabase.from("ai_jobs").update({ status: "approved", article_id: newArticle.id }).eq("id", jobId);
+    await fetchAll();
   };
 
-  /** Load article into form for editing */
-  const editArticle = (a: any) => {
-    setEditingId(a.id);
-    setTitle(a.title);
-    setExcerpt(a.excerpt);
-    setContent(a.content);
-    setCover(a.cover || "");
-    setTags(a.article_tags?.map((t: any) => t.tags.name).join(", ") || "");
-    setCustomSlug(a.slug || "");
-    setTab("new");
+  const rejectAIJob = async (jobId: string) => {
+    await supabase.from("ai_jobs").update({ status: "rejected" }).eq("id", jobId);
+    await fetchAll();
   };
 
-  if (!isAdmin) return null; // render nothing until admin check completes
+  const deleteAIJob = async (jobId: string) => {
+    await supabase.from("ai_jobs").delete().eq("id", jobId);
+    await fetchAll();
+  };
 
+  // ---- Tag CRUD ----
+  const addOrUpdateTag = async (tag: any, id?: number) => {
+    if (id) await supabase.from("tags").update(tag).eq("id", id);
+    else await supabase.from("tags").insert(tag);
+    await fetchAll();
+  };
+
+  const deleteTag = async (id: number) => {
+    await supabase.from("tags").delete().eq("id", id);
+    await fetchAll();
+  };
+
+
+
+  const startNewPost = () => {
+// To-do
+
+  };
+
+  // ---- UI ----
   return (
     <Layout>
-      <SEO title="Admin Panel" description="Manage articles and AI drafts" />
+      <SEO title="Bugchemy Admin" description="Manage posts, users, tags, and AI articles" />
       <section className="container px-4 py-10">
-        <h1 className="text-3xl font-extrabold mb-6">Admin Panel</h1>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Admin Dashboard</h1>
+          <Button size="sm" variant="outline" onClick={startNewPost}>
+            New Article
+          </Button>
+        </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="new">{editingId ? "Edit Article" : "New Article"}</TabsTrigger>
-            <TabsTrigger value="all">All Articles</TabsTrigger>
-            <TabsTrigger value="ai">AI Drafts</TabsTrigger>
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-1 lg:gap-2 h-auto flex-wrap">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="articles">Articles</TabsTrigger>
+            <TabsTrigger value="ai">AI</TabsTrigger>
+            <TabsTrigger value="tags">Tags</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
-          {/* NEW / EDIT ARTICLE */}
-          <TabsContent value="new" className="mt-6">
-            <div className="grid gap-6 lg:grid-cols-3">
-              <Card className="p-6 lg:col-span-2">
-                <div className="grid gap-4">
-                  <div>
-                    <Label>Title</Label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>Content (Markdown)</Label>
-                    <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={18} className="font-mono" />
-                  </div>
-                </div>
-              </Card>
-
-              <div className="grid gap-6">
-                <Card className="p-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold">Settings</h3>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setFsOpen(true)}>Preview</Button>
-                      <Button size="sm" onClick={saveArticle}>{editingId ? "Update" : "Publish"}</Button>
-                    </div>
-                  </div>
-                  <div className="grid gap-3">
-                    <Label>Excerpt</Label>
-                    <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={3} />
-                    <Label>Cover URL</Label>
-                    <Input value={cover} onChange={(e) => setCover(e.target.value)} />
-                    <Label>Custom Slug</Label>
-                    <Input value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} placeholder={slug || "generated-from-title"} />
-                    <Label>Tags</Label>
-                    <TagSelector value={tags} onChange={setTags} />
-                  </div>
-                </Card>
-
-                <Card className="p-6">
-                  <h3 className="font-semibold">Live Preview</h3>
-                  <div className="mt-4 prose dark:prose-invert max-w-none">
-                    <Markdown content={content} />
-                  </div>
-                </Card>
-              </div>
+          {/* Dashboard */}
+          <TabsContent value="dashboard" className="mt-6">
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts.length}</div><p>Total Articles</p></Card>
+              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{users.length}</div><p>Users</p></Card>
+              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{tagsData.length}</div><p>Tags</p></Card>
+              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
             </div>
           </TabsContent>
 
-          {/* ALL ARTICLES */}
-          <TabsContent value="all" className="mt-6">
-            <div className="grid gap-4">
-              {articles.map((a) => (
-                <Card key={a.id} className="p-4 flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold">{a.title}</div>
-                    <div className="text-xs text-muted-foreground">{a.article_tags?.map((t: any) => t.tags.name).join(", ")}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => editArticle(a)}>Edit</Button>
-                    <Button size="sm" variant="destructive" onClick={() => deleteArticle(a.id)}>Delete</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+
+          {/* Articles */}
+          <TabsContent value="articles" className="mt-6">
+          {/* old code 
+            <ArticlesManager
+              posts={posts}
+              onToggleVisibility={toggleVisibility}
+              onEdit={editPost}
+              onDelete={deletePost}
+              onCreateNew={startNewPost}
+            />
+          */}
+          <ArticlesManager/>
           </TabsContent>
 
-          {/* AI JOBS */}
+          {/* AI */}
           <TabsContent value="ai" className="mt-6">
-            <div className="grid gap-4">
-              {aiJobs.map((job) => (
-                <Card key={job.id} className="p-4 flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold">{job.topic || job.prompt.slice(0, 50)}</div>
-                    <div className="text-xs text-muted-foreground">{job.result_summary?.slice(0, 100)}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => approveAIJob(job)}>Approve</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <AIArticleApproval
+              aiJobs={aiJobs}
+              onApprove={approveAIJob}
+              onReject={rejectAIJob}
+              onDelete={deleteAIJob}
+            />
+          </TabsContent>
+
+          {/* Tags */}
+          <TabsContent value="tags" className="mt-6">
+            <TagManager
+              tags={tagsData}
+              onAddTag={(t)=>addOrUpdateTag(t)}
+              onUpdateTag={(id, t)=>addOrUpdateTag(t, id)}
+              onDeleteTag={deleteTag}
+            />
+          </TabsContent>
+
+          {/* Users */}
+          <TabsContent value="users" className="mt-6">
+            <UserManagement/>
           </TabsContent>
         </Tabs>
-
-        {/* FULLSCREEN PREVIEW */}
-        <Dialog open={fsOpen} onOpenChange={setFsOpen}>
-          <DialogContent className="w-full max-w-5xl h-[90vh] overflow-auto">
-            <DialogTitle>Preview: {title}</DialogTitle>
-            <Markdown content={content} />
-          </DialogContent>
-        </Dialog>
       </section>
     </Layout>
   );
