@@ -112,7 +112,9 @@ export default function Article(): JSX.Element {
           published_at: articleData.published_at ?? null,
           updated_at: articleData.updated_at ?? null,
           created_at: articleData.created_at ?? null,
-          profiles: articleData.profiles ?? null,
+          profiles: Array.isArray(articleData.profiles)
+            ? articleData.profiles[0] ?? null
+            : articleData.profiles ?? null,
           article_tags: tags,
           comments: (articleData.comments ?? []).map((c: any) => ({
             ...c,
@@ -248,7 +250,8 @@ export default function Article(): JSX.Element {
           )}
 
           <div className="mt-10">
-            <Comments comments={post.comments ?? []} articleId={post.id} />
+           {/** <Comments comments={post.comments ?? []} articleId={post.id} />*/} 
+            <Comments articleId={post.id} />
           </div>
         </article>
 

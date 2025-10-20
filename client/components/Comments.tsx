@@ -1,83 +1,195 @@
-import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+"use client";
 
-const KEY = "bugchemy.comments.v1";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type Comment = {
   id: string;
-  name: string;
-  message: string;
-  date: string;
+  article_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profiles: {
+    id: string;
+    display_name: string;
+    avatar_url: string;
+  };
 };
 
-function readAll(): Record<string, Comment[]> {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Comment[]>) : {};
-  } catch {
-    return {};
-  }
-}
+type CommentsProps = {
+  articleId: string;
+};
 
-function writeAll(db: Record<string, Comment[]>) {
-  localStorage.setItem(KEY, JSON.stringify(db));
-}
+export default function Comments({ articleId }: CommentsProps) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-export default function Comments({ slug }: { slug: string }) {
-  const [db, setDb] = useState<Record<string, Comment[]>>({});
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
-
+  // Fetch current user session
   useEffect(() => {
-    setDb(readAll());
+    const fetchUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user ?? null);
+      setLoading(false);
+    };
+    fetchUser();
   }, []);
 
-  const comments = db[slug] || [];
+  // Fetch comments from Supabase only if user is logged in
+  useEffect(() => {
+    if (!user) return;
 
-  const add = () => {
-    if (!name.trim() || !message.trim()) return;
-    const next: Comment = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      message: message.trim(),
-      date: new Date().toISOString(),
+    const fetchComments = async () => {
+      const { data, error } = await supabase
+        .from("comments")
+        .select(`
+          id,
+          article_id,
+          user_id,
+          content,
+          created_at,
+          profiles (
+            id,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq("article_id", articleId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching comments:", error);
+        return;
+      }
+
+      const formatted = (data ?? []).map((c: any) => ({
+        id: c.id,
+        article_id: c.article_id,
+        user_id: c.user_id,
+        content: c.content,
+        created_at: c.created_at,
+        profiles: c.profiles && c.profiles.length > 0
+          ? {
+              id: c.profiles[0].id,
+              display_name: c.profiles[0].display_name,
+              avatar_url: c.profiles[0].avatar_url,
+            }
+          : {
+              id: "",
+              display_name: "Unknown",
+              avatar_url: "",
+            },
+      }));
+
+      setComments(formatted);
     };
-    const updated = { ...db, [slug]: [next, ...comments] };
-    setDb(updated);
-    writeAll(updated);
-    setMessage("");
+
+    fetchComments();
+  }, [articleId, user]);
+
+  // Add a new comment
+  const handleAddComment = async () => {
+    if (!user) return;
+    if (!newComment.trim()) return;
+
+    const { data, error } = await supabase
+      .from("comments")
+      .insert([
+        {
+          article_id: articleId,
+          user_id: user.id,
+          content: newComment.trim(),
+        },
+      ])
+      .select(`id, article_id, user_id, content, created_at`)
+      .single();
+
+    if (error) {
+      console.error("Error adding comment:", error);
+      return;
+    }
+
+    const newEntry: Comment = {
+      id: data.id,
+      article_id: data.article_id,
+      user_id: data.user_id,
+      content: data.content,
+      created_at: data.created_at,
+      profiles: {
+        id: user.id,
+        display_name: user.user_metadata.full_name || user.email || "Anonymous",
+        avatar_url: user.user_metadata.avatar_url || "",
+      },
+    };
+
+    setComments((prev) => [...prev, newEntry]);
+    setNewComment("");
   };
 
+  if (loading) {
+    return <p className="text-center text-muted-foreground">Loading comments...</p>;
+  }
+
   return (
-    <section className="mt-12">
-      <h2 className="text-xl font-semibold">Comments</h2>
-      <div className="mt-4 grid gap-3">
-        <div className="grid gap-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            <div className="md:col-span-2">
-              <Textarea rows={3} placeholder="Share your thoughts…" value={message} onChange={(e) => setMessage(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <Button onClick={add}>Post comment</Button>
-          </div>
+    <Card className="mt-6 border rounded-2xl">
+      <CardContent className="p-4 space-y-4">
+        <h3 className="text-lg font-semibold">
+          {user ? `Comments (${comments.length})` : "Comments"}
+        </h3>
+
+        {/* Add Comment Input */}
+        <div className="flex items-center gap-2">
+          <Input
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder={user ? "Write a comment..." : "Log in to post a comment"}
+            disabled={!user}
+          />
+          <Button onClick={handleAddComment} disabled={!user || !newComment.trim()}>
+            Post
+          </Button>
         </div>
-        <div className="mt-4 grid gap-3">
-          {comments.map((c) => (
-            <div key={c.id} className="rounded-lg border p-4">
-              <div className="text-sm font-medium">{c.name}</div>
-              <div className="text-xs text-muted-foreground">{new Date(c.date).toLocaleString()}</div>
-              <p className="mt-2 text-sm whitespace-pre-wrap">{c.message}</p>
-            </div>
-          ))}
-          {comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Be the first to comment.</p>
-          ) : null}
-        </div>
-      </div>
-    </section>
+
+        {!user && (
+          <p className="text-sm text-muted-foreground">
+            ⚠️ You must be logged in to add a comment.
+          </p>
+        )}
+
+        {/* Comments List — only show if user is logged in */}
+        {user && (
+          <div className="space-y-3 mt-4">
+            {comments.length === 0 && (
+              <p className="text-sm text-muted-foreground">No comments yet.</p>
+            )}
+
+            {comments.map((comment) => (
+              <div key={comment.id} className="flex items-start gap-3">
+                <Avatar>
+                  <AvatarImage src={comment.profiles.avatar_url || ""} />
+                  <AvatarFallback>
+                    {comment.profiles.display_name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">
+                    {comment.profiles.display_name || "Anonymous"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{comment.content}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(comment.created_at).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
