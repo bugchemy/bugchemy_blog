@@ -29,18 +29,37 @@ export default function Comments({ articleId }: CommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
 
   // Fetch current user session
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
-      setUser(data.user ?? null);
+      setUser(data?.user ?? null);
       setLoading(false);
     };
     fetchUser();
   }, []);
 
-  // Fetch comments from Supabase only if user is logged in
+  useEffect(() => {
+  if (!user) return;
+
+  const fetchProfile = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .eq("id", user.id)
+      .single();
+
+    if (!error && data) {
+      setProfile(data);
+    }
+  };
+
+  fetchProfile();
+}, [user]);
+
+  // Fetch comments only if user is logged in
   useEffect(() => {
     if (!user) return;
 
@@ -73,11 +92,11 @@ export default function Comments({ articleId }: CommentsProps) {
         user_id: c.user_id,
         content: c.content,
         created_at: c.created_at,
-        profiles: c.profiles && c.profiles.length > 0
+        profiles: c.profiles
           ? {
-              id: c.profiles[0].id,
-              display_name: c.profiles[0].display_name,
-              avatar_url: c.profiles[0].avatar_url,
+              id: c.profiles.id,
+              display_name: c.profiles.display_name,
+              avatar_url: c.profiles.avatar_url,
             }
           : {
               id: "",
@@ -94,8 +113,7 @@ export default function Comments({ articleId }: CommentsProps) {
 
   // Add a new comment
   const handleAddComment = async () => {
-    if (!user) return;
-    if (!newComment.trim()) return;
+    if (!user || !newComment.trim()) return;
 
     const { data, error } = await supabase
       .from("comments")
@@ -114,22 +132,32 @@ export default function Comments({ articleId }: CommentsProps) {
       return;
     }
 
-    const newEntry: Comment = {
-      id: data.id,
-      article_id: data.article_id,
-      user_id: data.user_id,
-      content: data.content,
-      created_at: data.created_at,
-      profiles: {
-        id: user.id,
-        display_name: user.user_metadata.full_name || user.email || "Anonymous",
-        avatar_url: user.user_metadata.avatar_url || "",
-      },
-    };
-
-    setComments((prev) => [...prev, newEntry]);
-    setNewComment("");
+      // ✅ Use the fetched profile if available
+  const newEntry: Comment = {
+    id: data.id,
+    article_id: data.article_id,
+    user_id: data.user_id,
+    content: data.content,
+    created_at: data.created_at,
+    profiles: profile
+      ? profile
+      : {
+          id: user.id,
+          display_name:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email ||
+            "Anonymous",
+          avatar_url:
+            user.user_metadata?.avatar_url ||
+            user.user_metadata?.picture ||
+            "",
+        },
   };
+
+  setComments((prev) => [...prev, newEntry]);
+  setNewComment("");
+};
 
   if (loading) {
     return <p className="text-center text-muted-foreground">Loading comments...</p>;
@@ -138,9 +166,7 @@ export default function Comments({ articleId }: CommentsProps) {
   return (
     <Card className="mt-6 border rounded-2xl">
       <CardContent className="p-4 space-y-4">
-        <h3 className="text-lg font-semibold">
-          {user ? `Comments (${comments.length})` : "Comments"}
-        </h3>
+        <h3 className="text-lg font-semibold">Comments</h3>
 
         {/* Add Comment Input */}
         <div className="flex items-center gap-2">
@@ -155,38 +181,39 @@ export default function Comments({ articleId }: CommentsProps) {
           </Button>
         </div>
 
+        {/* If not logged in */}
         {!user && (
           <p className="text-sm text-muted-foreground">
-            ⚠️ You must be logged in to add a comment.
+            ⚠️ Please <span className="font-medium">log in</span> to view and add comments.
           </p>
         )}
 
-        {/* Comments List — only show if user is logged in */}
+        {/* Show comments only if user is logged in */}
         {user && (
           <div className="space-y-3 mt-4">
-            {comments.length === 0 && (
-              <p className="text-sm text-muted-foreground">No comments yet.</p>
-            )}
-
-            {comments.map((comment) => (
-              <div key={comment.id} className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarImage src={comment.profiles.avatar_url || ""} />
-                  <AvatarFallback>
-                    {comment.profiles.display_name?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">
-                    {comment.profiles.display_name || "Anonymous"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{comment.content}</p>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(comment.created_at).toLocaleString()}
-                  </span>
+            {comments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="flex items-start gap-3">
+                  <Avatar>
+                    <AvatarImage src={comment.profiles.avatar_url || ""} />
+                    <AvatarFallback>
+                      {comment.profiles.display_name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium">
+                      {comment.profiles.display_name || "Anonymous"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{comment.content}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </CardContent>
