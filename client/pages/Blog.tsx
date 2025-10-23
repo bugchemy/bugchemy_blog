@@ -212,9 +212,15 @@ export default function Blog() {
         </div>
 
         {/* Article Grid */}
+        {/* Article Grid */}
         {loading && page === 1 ? (
           <div className="flex justify-center py-20">
             <LogoLoader />
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+            <p className="text-lg font-medium">No related articles found.</p>
+            <p className="text-sm mt-1">Try adjusting your search or selecting a different tag.</p>
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -247,8 +253,16 @@ export default function Blog() {
                       <span>•</span>
                       <span>{a.readingTime} min read</span>
                     </div>
-                    <CardTitleWithTooltip text={a.title} limit={50} className="mt-3 group-hover:text-primary" />
-                    <CardDescriptionWithTooltip text={a.excerpt ?? ""} limit={50} className="mt-2 line-clamp-3" />
+                    <CardTitleWithTooltip
+                      text={a.title}
+                      limit={50}
+                      className="mt-3 group-hover:text-primary"
+                    />
+                    <CardDescriptionWithTooltip
+                      text={a.excerpt ?? ""}
+                      limit={50}
+                      className="mt-2 line-clamp-3"
+                    />
                     <div className="mt-4 flex gap-2 flex-wrap">
                       {a.tags.map((t) => (
                         <Badge
@@ -266,6 +280,7 @@ export default function Blog() {
             ))}
           </div>
         )}
+
 
         {/* Load more */}
         {hasMore && !loading && (
