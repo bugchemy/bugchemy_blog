@@ -71,10 +71,11 @@ export default function Blog() {
 
   // ✅ Fetch articles from Supabase (server-side search + filter)
   useEffect(() => {
-    if (!tagsData.length) return; // wait until tags are loaded
-    setLoading(true);
+  if (!tagsData.length) return; // wait until tags are loaded
+  setLoading(true);
 
-    async function fetchArticles() {
+  async function fetchArticles() {
+    try {
       let query = supabase
         .from("articles")
         .select(`
@@ -94,12 +95,12 @@ export default function Blog() {
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       // 🔹 Filter by tag
-      if (tag !== "all") {
-        const tagObj = tagsData.find((t) => t.name === tag);
-        if (tagObj) {
-          query = query.contains("article_tags_article_id_fkey", [{ tag_id: tagObj.id }]);
+        if (tag !== "all") {
+          const tagObj = tagsData.find((t) => t.name === tag);
+          if (tagObj) {
+            query = query.eq("article_tags_article_id_fkey.tag_id", Number(tagObj.id));
+          }
         }
-      }
 
       // 🔹 Search by query
       if (q) {
@@ -114,7 +115,6 @@ export default function Blog() {
         setArticles([]);
         setHasMore(false);
       } else {
-        // Map tag IDs to tag names
         const normalized: Article[] = (data || []).map((a: any) => ({
           id: a.id,
           slug: a.slug,
@@ -140,12 +140,18 @@ export default function Blog() {
 
         setHasMore((data?.length ?? 0) === pageSize);
       }
-
+    } catch (err) {
+      console.error("Unexpected error fetching articles:", err);
+      setArticles([]);
+      setHasMore(false);
+    } finally {
       setLoading(false);
     }
+  }
 
-    fetchArticles();
-  }, [tag, q, page, sort, tagsData]);
+  fetchArticles();
+}, [tag, q, page, sort, tagsData]);
+
 
   const loadMore = () => {
     if (hasMore) setPage((p) => p + 1);
