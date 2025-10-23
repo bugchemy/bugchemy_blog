@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -76,6 +77,66 @@ const CardFooter = React.forwardRef<
 ));
 CardFooter.displayName = "CardFooter";
 
+
+const CardTitleWithTooltip: React.FC<{ text: string; limit?: number; className?: string }> = ({
+  text,
+  limit = 60,
+  className,
+}) => {
+  if (!text) return null;
+  const isTruncated = text.length > limit;
+  const displayText = isTruncated ? text.slice(0, limit) + "…" : text;
+
+  return (
+    <Tooltip.Provider>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <h3 className={cn("text-2xl font-semibold leading-none tracking-tight", className)}>
+            {displayText}
+          </h3>
+        </Tooltip.Trigger>
+        {isTruncated && (
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-gray-900 text-white dark:bg-gray-800 dark:text-gray-100 text-sm p-2 rounded shadow-lg z-50 max-w-xs whitespace-normal">
+              {text}
+              <Tooltip.Arrow className="fill-gray-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        )}
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+};
+
+const CardDescriptionWithTooltip: React.FC<{ text: string; limit?: number; className?: string }> = ({
+  text,
+  limit = 100,
+  className,
+}) => {
+  if (!text) return null;
+  const isTruncated = text.length > limit;
+  const displayText = isTruncated ? text.slice(0, limit) + "…" : text;
+
+  return (
+    <Tooltip.Provider>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <p className={cn("text-sm text-muted-foreground", className)}>{displayText}</p>
+        </Tooltip.Trigger>
+        {isTruncated && (
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-gray-900 text-white dark:bg-gray-800 dark:text-gray-100 text-sm p-2 rounded shadow-lg z-50 max-w-xs whitespace-normal">
+              {text}
+              <Tooltip.Arrow className="fill-gray-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        )}
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+};
+
+
 export {
   Card,
   CardHeader,
@@ -83,4 +144,6 @@ export {
   CardTitle,
   CardDescription,
   CardContent,
+  CardTitleWithTooltip,
+  CardDescriptionWithTooltip,
 };

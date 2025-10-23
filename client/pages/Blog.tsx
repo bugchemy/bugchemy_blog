@@ -2,7 +2,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitleWithTooltip, CardDescriptionWithTooltip } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useEffect, useState, useMemo } from "react";
@@ -44,7 +44,7 @@ export default function Blog() {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
 
-  // ✅ Fetch all tags first
+  // ✅ Fetch all tags from DB
   useEffect(() => {
     async function fetchTags() {
       const { data, error } = await supabase.from("tags").select("id, name");
@@ -69,13 +69,12 @@ export default function Blog() {
     setPage(1); // reset page when filters/search change
   }, [tag, q, location.pathname]);
 
-  // ✅ Fetch articles from Supabase (server-side search + filter)
+  // ✅ Fetch articles from Supabase
   useEffect(() => {
-  if (!tagsData.length) return; // wait until tags are loaded
-  setLoading(true);
+    if (!tagsData.length) return; // wait until tags are loaded
+    setLoading(true);
 
-  async function fetchArticles() {
-    try {
+    async function fetchArticles() {
       let query = supabase
         .from("articles")
         .select(`
@@ -95,12 +94,12 @@ export default function Blog() {
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       // 🔹 Filter by tag
-        if (tag !== "all") {
-          const tagObj = tagsData.find((t) => t.name === tag);
-          if (tagObj) {
-            query = query.eq("article_tags_article_id_fkey.tag_id", Number(tagObj.id));
-          }
+      if (tag !== "all") {
+        const tagObj = tagsData.find((t) => t.name === tag);
+        if (tagObj) {
+          query = query.eq("article_tags_article_id_fkey.tag_id", Number(tagObj.id));
         }
+      }
 
       // 🔹 Search by query
       if (q) {
@@ -140,24 +139,18 @@ export default function Blog() {
 
         setHasMore((data?.length ?? 0) === pageSize);
       }
-    } catch (err) {
-      console.error("Unexpected error fetching articles:", err);
-      setArticles([]);
-      setHasMore(false);
-    } finally {
+
       setLoading(false);
     }
-  }
 
-  fetchArticles();
-}, [tag, q, page, sort, tagsData]);
-
+    fetchArticles();
+  }, [tag, q, page, sort, tagsData]);
 
   const loadMore = () => {
     if (hasMore) setPage((p) => p + 1);
   };
 
-  // 🔹 Sort in frontend if needed
+  // 🔹 Sort in frontend
   const visible = useMemo(() => {
     let list = [...articles];
     if (sort === "newest") list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
@@ -165,12 +158,10 @@ export default function Blog() {
     return list;
   }, [articles, sort]);
 
-  // 🔹 Extract unique tags for filter dropdown
+  // 🔹 Dropdown tags: always show all DB tags
   const tags = useMemo(() => {
-    const t = new Set<string>(["all"]);
-    articles.forEach((a) => a.tags.forEach((x) => t.add(x)));
-    return Array.from(t);
-  }, [articles]);
+    return ["all", ...tagsData.map((t) => t.name)];
+  }, [tagsData]);
 
   return (
     <Layout>
@@ -228,8 +219,8 @@ export default function Blog() {
         ) : (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {visible.map((a) => (
-              <Link to={`/blog/${a.slug}`} key={a.slug} className="group">
-                <Card className="overflow-hidden h-full hover:border-primary/40 transition-colors">
+              <Link to={`/blog/${a.slug}`} key={a.slug + a.id} className="group">
+                <Card className="overflow-hidden hover:border-primary/40 transition-colors">
                   {a.cover_url && (
                     <AspectRatio ratio={16 / 9}>
                       <img
@@ -240,7 +231,7 @@ export default function Blog() {
                       />
                     </AspectRatio>
                   )}
-                  <div className="p-5">
+                  <div className={`p-5 ${!a.cover_url ? "pt-3" : ""}`}>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {a.author?.avatar && (
                         <img
@@ -256,12 +247,8 @@ export default function Blog() {
                       <span>•</span>
                       <span>{a.readingTime} min read</span>
                     </div>
-                    <h2 className="mt-3 text-lg font-semibold group-hover:text-primary">
-                      {a.title}
-                    </h2>
-                    <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
-                      {a.excerpt}
-                    </p>
+                    <CardTitleWithTooltip text={a.title} limit={50} className="mt-3 group-hover:text-primary" />
+                    <CardDescriptionWithTooltip text={a.excerpt ?? ""} limit={50} className="mt-2 line-clamp-3" />
                     <div className="mt-4 flex gap-2 flex-wrap">
                       {a.tags.map((t) => (
                         <Badge
