@@ -20,32 +20,55 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Sign in with email/password
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (!data.session) {
+      if (!data.session || !data.user) {
         alert("Login failed: no session returned.");
         return;
       }
 
-      // Check if user is admin
+      // Fetch or create profile
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, display_name, is_admin")
+        .select("id, display_name, avatar_url, is_admin, profile_complete")
         .eq("id", data.user.id)
         .single();
 
-      if (profileError || !profile?.is_admin) {
-        alert("You are not an admin.");
-        await supabase.auth.signOut();
+      let userProfile = profile;
+
+      if (profileError) {
+        // Profile doesn't exist yet → create it (RLS allows user to insert their own)
+        const { data: newProfile, error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: data.user.id,
+            display_name: email.split("@")[0],
+            avatar_url: null,
+            is_admin: false,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        userProfile = newProfile;
+      }
+
+// Save session info locally
+      localStorage.setItem("bugchemy:user", JSON.stringify(userProfile));
+
+      // Redirect first-time users to complete profile
+      if (!userProfile.profile_complete) {
+        window.location.href = "/complete-profile";
         return;
       }
 
-      // Save session info locally (optional)
-      localStorage.setItem("bugchemy:user", JSON.stringify(profile));
-
-      // Redirect to admin
-      window.location.href = "/admin";
+      // Redirect admins to admin panel; regular users back to homepage
+      if (userProfile?.is_admin) {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/";
+      }
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -61,6 +84,7 @@ export default function Auth() {
     try {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
+
       alert("Signup successful! Please check your email to confirm before logging in.");
       setTab("login");
     } catch (err: any) {
@@ -72,14 +96,14 @@ export default function Auth() {
 
   return (
     <Layout>
-      <SEO title="Login / Sign up" description="Access your Bugchemy admin" />
+      <SEO title="Login / Sign up" description="Access your Bugchemy account" />
       <section className="container py-16 grid place-items-center">
         <Card className="w-full max-w-md p-6">
           <div className="mb-4 flex flex-col items-center text-center">
             <img src="/web-app-manifest-192x192.png" alt="Bugchemy" className="h-14 w-auto" />
             <h1 className="mt-3 text-xl font-semibold">Welcome to Bugchemy</h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              Login or create an account to manage your content.
+              Login or create an account to comment and engage with articles.
             </p>
           </div>
 
@@ -89,6 +113,7 @@ export default function Auth() {
               <TabsTrigger value="signup">Sign up</TabsTrigger>
             </TabsList>
 
+            {/* LOGIN TAB */}
             <TabsContent value="login" className="mt-6">
               <form onSubmit={onLogin} className="grid gap-4">
                 <div>
@@ -120,6 +145,7 @@ export default function Auth() {
               </form>
             </TabsContent>
 
+            {/* SIGNUP TAB */}
             <TabsContent value="signup" className="mt-6">
               <form onSubmit={onSignup} className="grid gap-4">
                 <div>

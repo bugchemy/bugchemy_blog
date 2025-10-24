@@ -177,7 +177,7 @@ function Header() {
               Login
             </Link>
           ) : (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef} >
               <button
                 className="flex items-center gap-2 text-sm text-foreground/90 hover:text-primary focus:outline-none"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -185,9 +185,15 @@ function Header() {
                 <img
                   src={profile.avatar_url || "/web-app-manifest-192x192.png"}
                   alt={profile.display_name || profile.email}
+                  title={profile.display_name || profile.email}
                   className="h-6 w-6 rounded-full object-cover"
                 />
-                <span>{profile.display_name || profile.email}</span>
+                  <span className="text-sm" title={profile.display_name || profile.email}>
+                    { (profile.display_name || profile.email)?.length > 10
+                      ? (profile.display_name || profile.email).slice(0, 10) + "..."
+                      : profile.display_name || profile.email
+                    }
+                  </span>
               </button>
 
               {dropdownOpen && (
