@@ -1,7 +1,8 @@
 import { ReactNode, useEffect, useState, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabaseClient";
 
 function Logo({ className = "" }: { className?: string }) {
   return (
@@ -78,6 +79,71 @@ function ThemeToggle() {
 
 function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null); // Store profile data
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch authenticated user and profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return setProfile(null);
+
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching profile:", error);
+        setProfile({ ...user, display_name: user.email, avatar_url: "/favicon-96x96.png" });
+      } else {
+        setProfile(profileData);
+      }
+    };
+
+    fetchProfile();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) return setProfile(null);
+
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) console.error("Error fetching profile:", error);
+          else setProfile(data);
+        });
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setProfile(null);
+    navigate("/auth");
+  };
+
   const link = (to: string, label: string) => (
     <Link
       to={to}
@@ -97,23 +163,71 @@ function Header() {
           <Logo />
           <nav className="hidden md:flex items-center gap-1">
             {link("/blog", "Blog")}
-            {link("/about", "About")}
-            {link("/newsletter", "Newsletter")}
-            {link("/contact", "Contact")}
-            {link("/admin", "Admin")}
+            {profile?.is_admin && link("/admin", "Admin")}
           </nav>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/newsletter">
-            <Button className="hidden sm:inline-flex">Subscribe</Button>
-          </Link>
-          <Link
-            to="/auth"
-            className="hidden sm:block text-sm text-muted-foreground hover:text-primary"
-          >
-            Login
-          </Link>
+        <div className="flex items-center gap-2 relative">
           <ThemeToggle />
+
+          {!profile ? (
+            <Link
+              to="/auth"
+              className="hidden sm:block text-sm text-muted-foreground hover:text-primary"
+            >
+              Login
+            </Link>
+          ) : (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                className="flex items-center gap-2 text-sm text-foreground/90 hover:text-primary focus:outline-none"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <img
+                  src={profile.avatar_url || "/web-app-manifest-192x192.png"}
+                  alt={profile.display_name || profile.email}
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+                <span>{profile.display_name || profile.email}</span>
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-background border rounded-md shadow-md py-2 z-50">
+                  <Link
+                    to="/blog"
+                    className="block px-4 py-2 text-sm hover:bg-accent/20"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Blog
+                  </Link>
+
+                  <Link
+                    to="/profile"
+                    className="block px-4 py-2 text-sm hover:bg-accent/20"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Profile
+                  </Link>
+
+                  {profile.is_admin && (
+                    <Link
+                      to="/admin"
+                      className="block px-4 py-2 text-sm hover:bg-accent/20"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      Admin
+                    </Link>
+                  )}
+
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-accent/20"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>

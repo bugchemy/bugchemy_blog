@@ -1,9 +1,19 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@iconify/react"; 
+import { Link } from "react-router-dom";
+
+import { supabase } from "@/lib/supabaseClient"; 
+
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { 
+  Card,
+  CardTitleWithTooltip,
+  CardDescriptionWithTooltip 
+} from "@/components/ui/card";
 import {
   Carousel,
   CarouselContent,
@@ -11,58 +21,18 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Link } from "react-router-dom";
-
-const categories = [
-  { name: "AI Developer Tools", icon: "🤖", href: "/blog?tag=ai" },
-  { name: "Debugging & Logs", icon: "🪲", href: "/blog?tag=logs" },
-  { name: "Modern Web", icon: "🚀", href: "/blog?tag=web" },
-  { name: "Infrastructure / DevOps", icon: "🧪", href: "/blog?tag=devops" },
-  { name: "Linux Tips & CLI", icon: "⌨️", href: "/blog?tag=linux" },
-  { name: "Learning Pathways", icon: "📚", href: "/blog?tag=learning" },
-];
-
-const featured = [
-  {
-    title: "Debugging Java Microservices with Logs and Traces",
-    excerpt:
-      "Troubleshoot JVM services with structured logs and OpenTelemetry.",
-    tag: "Java",
-    href: "/blog/java-microservices-logs-traces",
-  },
-  {
-    title: "Python Data Pipelines: From Logs to Insights",
-    excerpt:
-      "Polars + DuckDB for fast analysis of production logs.",
-    tag: "Python",
-    href: "/blog/python-pipelines-from-logs-to-insights",
-  },
-  {
-    title: "Shell Scripting for Incident Response",
-    excerpt:
-      "Battle‑tested bash snippets to gather diagnostics safely.",
-    tag: "Bash",
-    href: "/blog/shell-scripting-incident-response",
-  },
-
-    {
-    title: "Shell Scripting for Incident Response",
-    excerpt:
-      "Battle‑tested bash snippets to gather diagnostics safely.",
-    tag: "Bash",
-    href: "/blog/shell-scripting-incident-response",
-  },
-
-    {
-    title: "Shell Scripting for Incident Response",
-    excerpt:
-      "Battle‑tested bash snippets to gather diagnostics safely.",
-    tag: "Bash",
-    href: "/blog/shell-scripting-incident-response",
-  },
-];
+import { LogoLoader } from "@/components/LogoLoader";
 
 export default function Index() {
+  // Featured Articles State
+  const [featured, setFeatured] = useState<any[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
+  // Categories State
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tagsLookup, setTagsLookup] = useState<{ [id: number]: string }>({});
+
   const jsonLd = useMemo(
     () => ({
       "@context": "https://schema.org",
@@ -70,40 +40,124 @@ export default function Index() {
       name: "Bugchemy",
       url: "/",
       description:
-        "Bugchemy is a developer‑centric learning blog exploring tools, frameworks, debugging, and real‑world tech insights.",
+        "Bugchemy is a developer-centric learning blog exploring tools, frameworks, debugging, and real-world tech insights.",
       inLanguage: "en-US",
     }),
-    [],
+    []
   );
+
+  // Fetch Categories (tags)
+  useEffect(() => {
+    const fetchTags = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("tags")
+        .select("id, name, excerpt, icon");
+
+      if (error) {
+        console.error("Error fetching tags:", error);
+      } else {
+        setCategories(data || []);
+        // create lookup map for tag ID → name
+        const lookup: { [id: number]: string } = {};
+        (data || []).forEach((t) => {
+          lookup[t.id] = t.name;
+        });
+        setTagsLookup(lookup);
+      }
+      setLoading(false);
+    };
+
+    fetchTags();
+  }, []);
+
+  // Fetch Featured Articles
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      setLoadingFeatured(true);
+
+      const { data, error } = await supabase
+        .from("featured_articles")
+        .select(`
+          article_id,
+          articles!inner(
+            id, slug, title, excerpt,
+            published_at, updated_at,
+            articles_author_id_fkey!inner(display_name, avatar_url),
+            article_tags_article_id_fkey!inner(tag_id)
+          )
+        `);
+
+      if (error) {
+        console.error("Error fetching featured articles:", error);
+        setFeatured([]);
+      } else {
+        const normalized = (data || []).map((f: any) => {
+          const article = f.articles;
+          return {
+            id: article.id,
+            slug: article.slug,
+            title: article.title,
+            excerpt: article.excerpt,
+            cover_url: article.cover_url ?? undefined,
+            // ✅ Map tag IDs to tag names using lookup
+            tags: (article.article_tags_article_id_fkey || []).map(
+              (t: any) => tagsLookup[t.tag_id] || t.tag_id
+            ),
+            author: {
+              name: article.articles_author_id_fkey?.display_name ?? "Bugchemy",
+              avatar: article.articles_author_id_fkey?.avatar_url ?? undefined,
+            },
+            date: article.published_at,
+            updated: article.updated_at,
+            readingTime: Math.ceil((article.excerpt?.length ?? 1000) / 1000) * 2,
+          };
+        });
+        setFeatured(normalized);
+      }
+
+      setLoadingFeatured(false);
+    };
+
+    fetchFeatured();
+  }, [tagsLookup]); // 🔹 depend on tagsLookup so IDs are mapped to names
 
   return (
     <Layout>
       <SEO
         title="Bugchemy — Experiment. Learn. Evolve."
-        description="A modern, developer‑centric learning blog exploring tools, frameworks, debugging, and real‑world tech insights."
+        description="A modern, developer-centric learning blog exploring tools, frameworks, debugging, and real-world tech insights."
         jsonLd={jsonLd}
       />
 
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="container grid gap-8 md:grid-cols-12 items-center">
           <div className="md:col-span-7">
             <div className="flex items-center gap-3 mb-6">
-              <img src="/favicon-96x96.png" alt="Bugchemy" className="h-10 w-10" />
-              <Badge className="bg-primary/15 text-primary" variant="secondary">Experiment. Learn. Evolve.</Badge>
+              <img
+                src="/favicon-96x96.png"
+                alt="Bugchemy"
+                className="h-10 w-10"
+              />
+              <Badge
+                className="bg-primary/15 text-primary"
+                variant="secondary"
+              >
+                Experiment. Learn. Evolve.
+              </Badge>
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
               Debug better. Build faster. Learn continuously.
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-prose">
-              Bugchemy blends curiosity with hands‑on experimentation—covering tools, frameworks, debugging methods, and real‑world insights for developers and support engineers.
+              Bugchemy blends curiosity with hands-on experimentation—covering
+              tools, frameworks, debugging methods, and real-world insights for
+              developers and support engineers.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link to="/blog">
                 <Button className="shadow-lg">Read the Blog</Button>
-              </Link>
-              <Link to="/newsletter">
-                <Button variant="outline">Join Lab Notes</Button>
               </Link>
             </div>
           </div>
@@ -122,29 +176,74 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Featured */}
+      {/* Featured Section */}
       <section className="container py-8 md:py-12">
         <div className="flex items-end justify-between mb-6">
           <h2 className="text-2xl md:text-3xl font-bold">Featured Articles</h2>
-          <Link to="/blog" className="text-sm text-primary hover:underline">View all</Link>
+          <Link to="/blog" className="text-sm text-primary hover:underline">
+            View all
+          </Link>
         </div>
         <div className="relative">
           <Carousel>
             <CarouselContent>
-              {featured.map((item) => (
-                <CarouselItem key={item.href} className="md:basis-1/2 lg:basis-1/3">
-                  <Link to={item.href} className="block h-full">
-                    <Card className="h-full p-6 hover:border-primary/40 transition-colors">
-                      <div className="mb-3">
-                        <Badge variant="secondary" className="bg-accent/15 text-accent">{item.tag}</Badge>
-                      </div>
-                      <h3 className="text-lg font-semibold leading-snug">{item.title}</h3>
-                      <p className="mt-2 text-sm text-muted-foreground">{item.excerpt}</p>
-                      <div className="mt-4 text-sm text-primary">Read more →</div>
-                    </Card>
-                  </Link>
-                </CarouselItem>
-              ))}
+              {loadingFeatured ? (
+                <div className="py-20 text-center w-full">
+                  <LogoLoader />
+                </div>
+              ) : featured.length === 0 ? (
+                <div className="py-20 text-center w-full">
+                  No featured articles found
+                </div>
+              ) : (
+                featured.map((a) => (
+                  <CarouselItem key={a.slug} className="md:basis-1/2 lg:basis-1/3">
+                    <Link to={`/blog/${a.slug}`} className="block h-full">
+                      <Card className="overflow-hidden hover:border-primary/40 transition-colors">
+                        {a.cover_url && (
+                          <AspectRatio ratio={16 / 9}>
+                            <img
+                              src={a.cover_url}
+                              alt={a.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </AspectRatio>
+                        )}
+                        {/** */}
+                        <div className={`p-5 ${!a.cover_url ? "pt-3" : ""}`}>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {/** Do not change commented code */}
+                          </div>
+
+                          <CardTitleWithTooltip
+                            text={a.title}
+                            limit={50}
+                            className="mt-3 group-hover:text-primary"
+                          />
+                          <CardDescriptionWithTooltip
+                            text={a.excerpt ?? ""}
+                            limit={50}
+                            className="mt-2 line-clamp-3"
+                          />
+
+                          <div className="mt-4 flex gap-2 flex-wrap">
+                            {a.tags.map((t) => (
+                              <Badge
+                                key={t}
+                                variant="secondary"
+                                className="bg-accent/15 text-accent capitalize"
+                              >
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                  </CarouselItem>
+                ))
+              )}
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex" />
             <CarouselNext className="hidden md:flex" />
@@ -152,33 +251,53 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* ✅ Dynamic Categories Section */}
       <section className="container py-8 md:py-12">
         <h2 className="text-2xl md:text-3xl font-bold mb-6">Explore Categories</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((c) => (
-            <Link to={c.href} key={c.name} className="group">
-              <Card className="p-5 hover:border-primary/40 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl" aria-hidden>{c.icon}</div>
-                  <div>
-                    <h3 className="font-semibold group-hover:text-primary">{c.name}</h3>
-                    <p className="text-xs text-muted-foreground">Articles, guides, and lab notes</p>
+
+        {loading ? (
+          <p className="text-muted-foreground">Loading categories...</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categories.map((c) => (
+              <Link to={`/blog?tag=${encodeURIComponent(c.name)}`} key={c.id}>
+                <Card className="p-5 hover:border-primary/40 transition-colors">
+                  <div className="flex items-center gap-3">
+                    {c.icon ? (
+                      <Icon icon={c.icon} className="text-2xl text-primary" />
+                    ) : (
+                      <span className="text-2xl">🧩</span>
+                    )}
+                    <div>
+                      <h3 className="font-semibold hover:text-primary">
+                        {c.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {c.excerpt || "Articles, guides, and lab notes"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Newsletter CTA */}
       <section className="container py-12">
         <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-transparent to-accent/10 p-8 md:p-10">
           <div className="max-w-2xl">
-            <h3 className="text-xl md:text-2xl font-bold">Join Bugchemy Lab Notes</h3>
-            <p className="mt-2 text-muted-foreground">Monthly tips, tools, and experiments. No spam—only signal.</p>
-            <form className="mt-6 flex flex-col sm:flex-row gap-3" onSubmit={(e) => e.preventDefault()}>
+            <h3 className="text-xl md:text-2xl font-bold">
+              Join Bugchemy Lab Notes
+            </h3>
+            <p className="mt-2 text-muted-foreground">
+              Monthly tips, tools, and experiments. No spam—only signal.
+            </p>
+            <form
+              className="mt-6 flex flex-col sm:flex-row gap-3"
+              onSubmit={(e) => e.preventDefault()}
+            >
               <input
                 type="email"
                 required
@@ -187,7 +306,9 @@ export default function Index() {
               />
               <Button type="submit">Subscribe</Button>
             </form>
-            <p className="mt-2 text-xs text-muted-foreground">We’ll integrate Mailchimp/ConvertKit next.</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              We’ll integrate Mailchimp/ConvertKit next.
+            </p>
           </div>
         </div>
       </section>

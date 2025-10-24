@@ -30,7 +30,7 @@ export default function Admin() {
   const [customSlug, setCustomSlug] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<number>(0)
   const [users, setUsers] = useState<any[]>([]);
   const [tagsData, setTagsData] = useState<any[]>([]);
   const [aiJobs, setAIJobs] = useState<any[]>([]);
@@ -59,6 +59,14 @@ export default function Admin() {
     //  .order("created_at", { ascending: false });
     //if (artErr) console.error("Error fetching articles:", artErr);
 
+    //Fetch Article Count
+    const { count, error } = await supabase
+      .from("articles")
+      .select("*", { count: "exact", head: true });
+    if (error) {
+      console.error("Error fetching count:", error);
+    }
+
     // Fetch tags
     const { data: tagsRes, error: tagErr } = await supabase.from("tags").select("*");
     if (tagErr) console.error("Error fetching tags:", tagErr);
@@ -71,7 +79,7 @@ export default function Admin() {
     const { data: jobs, error: jobErr } = await supabase.from("ai_jobs").select("*").order("created_at", { ascending: false });
     if (jobErr) console.error("Error fetching AI jobs:", jobErr);
 
-    //setPosts(articles || []);
+    setPosts(count || 0);
     setTagsData(tagsRes || []);
     setUsers(profiles || []);
     setAIJobs(jobs || []);
@@ -234,7 +242,7 @@ export default function Admin() {
           {/* Dashboard */}
           <TabsContent value="dashboard" className="mt-6">
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts.length}</div><p>Total Articles</p></Card>
+              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{users.length}</div><p>Users</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{tagsData.length}</div><p>Tags</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
