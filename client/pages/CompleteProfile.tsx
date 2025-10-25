@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LogoLoader } from "@/components/LogoLoader";
 
 export default function CompleteProfile() {
   const [profile, setProfile] = useState<any>(null);
@@ -22,6 +23,10 @@ const avatars = [
   "/avatars/avataaars6.png",
   "/avatars/avataaars7.png",
   "/avatars/avataaars8.png",
+  "/avatars/avataaars9.png",
+  "/avatars/avataaars10.png",
+  "/avatars/avataaars11.png",
+  "/avatars/avataaars12.png",
 ];
 
   useEffect(() => {
@@ -79,7 +84,12 @@ const avatars = [
     }
   };
 
-  if (!profile) return <Layout><div>Loading...</div></Layout>;
+  if (!profile) {
+  return <Layout>
+    <div className="flex justify-center py-20">
+            <LogoLoader />
+          </div></Layout>;
+    }
 
   return (
     <Layout>
@@ -99,14 +109,14 @@ const avatars = [
           {/* Avatar Selection */}
           <div>
             <label>Choose Your Avatar</label>
-            <div className="flex gap-3 mt-2 flex-wrap">
+            <div className="flex gap-3 mt-2 flex-wrap justify-center">
               {avatars.map((avatar) => (
                 <img
                   key={avatar}
                   src={avatar}
                   alt="avatar"
                   className={cn(
-                    "h-12 w-12 rounded-full border-2 cursor-pointer object-cover",
+                    "h-20 w-20 rounded-full border-2 cursor-pointer object-cover",
                     avatarUrl === avatar ? "border-primary" : "border-transparent"
                   )}
                   onClick={() => setAvatarUrl(avatar)}
@@ -116,7 +126,9 @@ const avatars = [
           </div>
 
           <Button type="submit" disabled={loading}>
-            {loading ? "Saving..." : "Save Profile"}
+            {loading ? <div className="flex justify-center py-20">
+            <LogoLoader />
+          </div> : "Save Profile"}
           </Button>
         </form>
       </div>

@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { Content } from "@/lib/content";
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 import Index from "./pages/Index";
 import ComingSoon from "./pages/ComingSoon";
 import Blog from "./pages/Blog";
@@ -36,20 +38,21 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Init />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<Article />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/newsletter" element={<Newsletter />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/cs" element={<ComingSoon />} />
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ProtectedRoute>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<Article />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/newsletter" element={<Newsletter />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/cs" element={<ComingSoon />} />
+            <Route path="/complete-profile" element={<CompleteProfile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ProtectedRoute>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

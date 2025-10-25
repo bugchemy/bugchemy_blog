@@ -80,57 +80,74 @@ function ThemeToggle() {
 function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null); // Store profile data
+
+  const [profile, setProfile] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch authenticated user and profile
   useEffect(() => {
-    const fetchProfile = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return setProfile(null);
+    let mounted = true;
 
+    const loadProfile = async (userId: string) => {
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
 
-      if (error) {
-        console.error("Error fetching profile:", error);
-        setProfile({ ...user, display_name: user.email, avatar_url: "/favicon-96x96.png" });
-      } else {
-        setProfile(profileData);
+      if (mounted) {
+        if (error) {
+          console.error("Error fetching profile:", error);
+          setProfile({
+            id: userId,
+            display_name: "User",
+            avatar_url: "/favicon-96x96.png",
+            is_admin: false,
+          });
+        } else {
+          setProfile(profileData);
+        }
+        setLoading(false);
       }
     };
 
-    fetchProfile();
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) return setProfile(null);
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
 
-      supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single()
-        .then(({ data, error }) => {
-          if (error) console.error("Error fetching profile:", error);
-          else setProfile(data);
-        });
-    });
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          if (!mounted) return;
+          if (!session?.user) {
+            setProfile(null);
+          } else {
+            loadProfile(session.user.id);
+          }
+        }
+      );
 
-    return () => {
-      listener?.subscription.unsubscribe();
+      return () => {
+        mounted = false;
+        listener?.subscription.unsubscribe();
+      };
     };
+
+    init();
   }, []);
 
-  // Close dropdown if clicked outside
+  // Close dropdown when clicked outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
     };
@@ -156,6 +173,18 @@ function Header() {
     </Link>
   );
 
+  // prevent flicker by showing nothing until session known
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-40 border-b bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <Logo />
+          <div className="h-4 w-12 bg-muted rounded animate-pulse" />
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -166,6 +195,7 @@ function Header() {
             {profile?.is_admin && link("/admin", "Admin")}
           </nav>
         </div>
+
         <div className="flex items-center gap-2 relative">
           <ThemeToggle />
 
@@ -177,7 +207,7 @@ function Header() {
               Login
             </Link>
           ) : (
-            <div className="relative" ref={dropdownRef} >
+            <div className="relative" ref={dropdownRef}>
               <button
                 className="flex items-center gap-2 text-sm text-foreground/90 hover:text-primary focus:outline-none"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -188,12 +218,11 @@ function Header() {
                   title={profile.display_name || profile.email}
                   className="h-6 w-6 rounded-full object-cover"
                 />
-                  <span className="text-sm" title={profile.display_name || profile.email}>
-                    { (profile.display_name || profile.email)?.length > 10
-                      ? (profile.display_name || profile.email).slice(0, 10) + "..."
-                      : profile.display_name || profile.email
-                    }
-                  </span>
+                <span className="text-sm" title={profile.display_name || profile.email}>
+                  {(profile.display_name || profile.email)?.length > 10
+                    ? (profile.display_name || profile.email).slice(0, 10) + "..."
+                    : profile.display_name || profile.email}
+                </span>
               </button>
 
               {dropdownOpen && (
@@ -239,6 +268,7 @@ function Header() {
     </header>
   );
 }
+
 
 function Footer() {
   return (
