@@ -4,37 +4,55 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { LogoLoader } from "@/components/LogoLoader";
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean; // optional prop to indicate admin-only route
+}
+
+export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const checkUserProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      // 1️⃣ If user not logged in → allow everything
+      // If user is not logged in
       if (!user) {
+        if (adminOnly) {
+          navigate("/", { replace: true }); // redirect non-authenticated users away from admin
+          return;
+        }
         setChecking(false);
         return;
       }
 
-      // 2️⃣ Fetch profile info for logged-in user
+      // Fetch profile info
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("profile_complete")
+        .select("profile_complete, is_admin")
         .eq("id", user.id)
         .single();
 
       if (error) {
-        console.error("Profile check error:", error);
+        console.error("Profile fetch error:", error);
+        if (adminOnly) navigate("/", { replace: true });
         setChecking(false);
         return;
       }
 
-      // 3️⃣ If logged-in user has incomplete profile, redirect
+      // If profile incomplete → redirect to complete-profile page
       if (!profile?.profile_complete && location.pathname !== "/complete-profile") {
         navigate("/complete-profile", { replace: true });
+        return;
+      }
+
+      // If this is an admin-only page and user is not admin → redirect
+      if (adminOnly && !profile?.is_admin) {
+        navigate("/", { replace: true });
         return;
       }
 
@@ -42,7 +60,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     };
 
     checkUserProfile();
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, adminOnly]);
 
   if (checking) {
     return (

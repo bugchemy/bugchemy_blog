@@ -38,21 +38,81 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Init />
-        <ProtectedRoute>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:slug" element={<Article />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/newsletter" element={<Newsletter />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/cs" element={<ComingSoon />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </ProtectedRoute>
+
+        <Routes>
+          {/* Public / unauthenticated routes */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/cs" element={<ComingSoon />} />
+          <Route path="*" element={<NotFound />} />
+
+          {/* General protected routes (logged-in users, profile check) */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/blog"
+            element={
+              <ProtectedRoute>
+                <Blog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/blog/:slug"
+            element={
+              <ProtectedRoute>
+                <Article />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <ProtectedRoute>
+                <About />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/newsletter"
+            element={
+              <ProtectedRoute>
+                <Newsletter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <ProtectedRoute>
+                <Contact />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/complete-profile"
+            element={
+              <ProtectedRoute>
+                <CompleteProfile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin-only route */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
