@@ -202,7 +202,7 @@ function Header() {
           {!profile ? (
             <Link
               to="/auth"
-              className="hidden sm:block text-sm text-muted-foreground hover:text-primary"
+              className="block text-sm text-muted-foreground hover:text-primary"
             >
               Login
             </Link>
