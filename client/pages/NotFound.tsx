@@ -14,15 +14,31 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <Layout>
-      <section className="container py-24 text-center">
-        <h1 className="text-6xl font-extrabold tracking-tight">404</h1>
-        <p className="mt-3 text-muted-foreground">Oops! Page not found.</p>
-        <div className="mt-8">
-          <Link to="/">
-            <Button>Return to Home</Button>
-          </Link>
+<Layout>
+      <section className="container flex flex-col items-center justify-center min-h-[80vh] text-center space-y-6">
+        <div className="relative w-[180px] sm:w-[150px] mx-auto">
+          <img
+            src="/404.png"
+            alt="Bugchemy 404 logo"
+            className="w-full h-auto object-contain opacity-95 drop-shadow-lg transition-transform duration-500 hover:scale-105"
+            loading="eager"
+          />
         </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
+            Oops!
+          </h1>
+          <p className="text-xl font-bold bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
+            404! Page not found
+          </p>
+        </div>
+
+        <Link to="/">
+          <Button className="mt-4 px-6 py-3 text-base rounded-xl shadow-md hover:shadow-lg transition-all">
+            Return to Home
+          </Button>
+        </Link>
       </section>
     </Layout>
   );
