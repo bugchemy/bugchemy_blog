@@ -8,8 +8,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { Content } from "@/lib/content";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import ComingSoon from "./pages/ComingSoon";
 import Blog from "./pages/Blog";
@@ -21,6 +21,7 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import CompleteProfile from "./pages/CompleteProfile";
+import ArticleEditor from "@/components/admin/ArticleEditor";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,26 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+
+          {/* Full-page Editor routes (also admin-only) */}
+          <Route
+            path="/admin/articles/new"
+            element={
+              <ProtectedRoute adminOnly>
+                <ArticleEditor />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/articles/:id/edit"
+            element={
+              <ProtectedRoute adminOnly>
+                <ArticleEditor />
+              </ProtectedRoute>
+            }
+          />
+
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

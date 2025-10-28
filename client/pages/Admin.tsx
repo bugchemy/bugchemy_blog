@@ -252,16 +252,7 @@ export default function Admin() {
 
           {/* Articles */}
           <TabsContent value="articles" className="mt-6">
-          {/* old code 
-            <ArticlesManager
-              posts={posts}
-              onToggleVisibility={toggleVisibility}
-              onEdit={editPost}
-              onDelete={deletePost}
-              onCreateNew={startNewPost}
-            />
-          */}
-          <ArticlesManager/>
+            <ArticlesManager />
           </TabsContent>
 
           {/* AI */}
