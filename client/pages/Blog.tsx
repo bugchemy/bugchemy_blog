@@ -37,7 +37,7 @@ export default function Blog() {
   const [search, setSearch] = useState(initialQuery);
   const [q, setQ] = useState(initialQuery);
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 20;
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [tagsData, setTagsData] = useState<{ id: number; name: string }[]>([]);
