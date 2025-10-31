@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Edit2, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { LogoLoader } from "@/components/LogoLoader";
 
 type Role = "admin" | "user";
 
@@ -19,6 +20,7 @@ interface User {
   id: string;
   name: string;
   role: Role;
+  avatar?: string | null; // 👈 add this line
   // Placeholder for future email support
   email?: string;
 }
@@ -36,7 +38,7 @@ export default function UserManagement() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, is_admin");
+        .select("id, display_name, is_admin , avatar_url");
 
       if (error) throw error;
 
@@ -44,6 +46,7 @@ export default function UserManagement() {
         id: u.id,
         name: u.display_name ?? "Unnamed",
         role: u.is_admin ? "admin" : "user",
+        avatar: u.avatar_url ?? "/avatars/avataaars1.png",
         email: undefined, // future placeholder
       }));
 
@@ -171,37 +174,84 @@ export default function UserManagement() {
         </div>
       </Card>
 
-      {/* Users List (Compact View) */}
-      <div className="grid gap-2">
+
+       <div className="grid gap-3">
         <h3 className="text-base sm:text-lg font-semibold">Users ({users.length})</h3>
         {loading ? (
-          <p className="text-xs sm:text-sm text-muted-foreground">Loading users...</p>
+          <p className="text-xs sm:text-sm text-muted-foreground"><LogoLoader /></p>
         ) : users.length === 0 ? (
           <p className="text-xs sm:text-sm text-muted-foreground">No users yet.</p>
         ) : (
-          <div className="grid gap-1">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {users.map((user) => (
-              <div
-                key={user.id}
-                className="flex justify-between items-center p-2 sm:p-3 bg-muted/10 rounded"
-              >
-                <div className="text-sm sm:text-base font-medium">{user.name}</div>
-                <div className="flex items-center gap-2">
+          <Card key={user.id} className="p-4 flex flex-col justify-between">
+                {/* Top Row: Avatar + Display Name */}
+                <div className="flex items-center gap-3 mb-3">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      onError={(e) => (e.currentTarget.src = "/default-avatar.png")}
+                      className="w-10 h-10 rounded-full object-cover border"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                      N/A
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-semibold text-sm sm:text-base">
+                      {user.name || "Unnamed User"}
+                    </h4>
+                    {user.email && (
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Row: Role + Actions */}
+                <div className="flex items-center justify-between mt-2">
+                  <span
+                    className={`text-xs font-medium ${
+                      user.role ? "text-green-600" : "text-muted-foreground"
+                    }`}
+                  >
                   <span className="text-xs sm:text-sm font-mono px-2 py-0.5 bg-muted/20 rounded">
                     {user.role}
                   </span>
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(user)} className="text-xs p-1">
-                    <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(user.id)} className="text-xs p-1">
-                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </Button>
+                  </span>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(user)}
+                      className="text-xs p-1"
+                    >
+                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDelete(user.id)}
+                      className="text-xs p-1"
+                    >
+                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </Card>
+
             ))}
           </div>
         )}
       </div>
+
+
+
+
+
     </div>
   );
 }

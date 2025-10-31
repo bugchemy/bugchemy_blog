@@ -1,106 +1,194 @@
-import { useState } from "react";
+"use client";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tag } from "@/lib/content";
-import { Trash2, Edit2 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { Trash2, Edit2, RefreshCcw } from "lucide-react";
+import { Icon } from "@iconify/react";
+import { LogoLoader } from "@/components/LogoLoader";
 
-interface TagManagerProps {
-  tags: Tag[];
-  onAddTag: (tag: Omit<Tag, "id" | "createdAt">) => void;
-  onDeleteTag: (id: number) => void;
-  onUpdateTag: (id: number, tag: Omit<Tag, "id" | "createdAt">) => void;
+interface Tag {
+  id: number;
+  name: string;
+  excerpt?: string | null;
+  icon?: string | null;
+  article_count?: number;
 }
 
 function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
-export default function TagManager({
-  tags,
-  onAddTag,
-  onDeleteTag,
-  onUpdateTag,
-}: TagManagerProps) {
+export default function TagManager() {
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [icon, setIcon] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const slug = slugify(name);
 
-  const handleSubmit = () => {
-    if (!name) return;
+  // 🧭 Fetch all tags with article counts
+  const fetchTags = async () => {
+    setLoading(true);
+    try {
+      const { data: tagData, error } = await supabase
+        .from("tags")
+        .select("id, name, excerpt, icon");
+      if (error) throw error;
 
-    const tagData = { name, slug, description };
+      // Get article counts for each tag
+      const { data: tagLinks, error: linkErr } = await supabase
+        .from("article_tags")
+        .select("tag_id, article_id");
+      if (linkErr) throw linkErr;
 
-    if (editingId) {
-      onUpdateTag(editingId, tagData);
-      setEditingId(null);
-    } else {
-      onAddTag(tagData);
+      const counts: Record<number, number> = {};
+      tagLinks?.forEach((l) => {
+        counts[l.tag_id] = (counts[l.tag_id] || 0) + 1;
+      });
+
+      const combined = tagData.map((t) => ({
+        ...t,
+        article_count: counts[t.id] || 0,
+      }));
+
+      setTags(combined);
+    } catch (err) {
+      console.error("Error fetching tags:", err);
+    } finally {
+      setLoading(false);
     }
-
-    setName("");
-    setDescription("");
   };
 
+  useEffect(() => {
+    fetchTags();
+  }, []);
+
+  // ➕ Create or update tag
+  const handleSubmit = async () => {
+    if (!name.trim()) return alert("Tag name is required");
+
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from("tags")
+          .update({ name, excerpt, icon })
+          .eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("tags")
+          .insert({ name, excerpt, icon });
+        if (error) throw error;
+      }
+      setName("");
+      setExcerpt("");
+      setIcon("");
+      setEditingId(null);
+      fetchTags();
+    } catch (err: any) {
+      console.error("Error saving tag:", err);
+      alert(err.message || "Error saving tag");
+    }
+  };
+
+  // 🗑 Delete tag
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this tag and remove all article relations?")) return;
+
+    try {
+      await supabase.from("article_tags").delete().eq("tag_id", id);
+      const { error } = await supabase.from("tags").delete().eq("id", id);
+      if (error) throw error;
+      fetchTags();
+    } catch (err: any) {
+      console.error("Error deleting tag:", err);
+      alert(err.message || "Error deleting tag");
+    }
+  };
+
+  // ✏️ Edit tag
   const handleEdit = (tag: Tag) => {
     setEditingId(tag.id);
     setName(tag.name);
-    setDescription(tag.description || "");
+    setExcerpt(tag.excerpt || "");
+    setIcon(tag.icon || "");
   };
 
+  // 🚫 Cancel edit
   const handleCancel = () => {
     setEditingId(null);
     setName("");
-    setDescription("");
+    setExcerpt("");
+    setIcon("");
   };
 
   return (
     <div className="grid gap-6">
       <Card className="p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold mb-4">
-          {editingId ? "Edit Tag" : "Create New Tag"}
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base sm:text-lg font-semibold">
+            {editingId ? "Edit Tag" : "Create New Tag"}
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fetchTags}
+            disabled={loading}
+            className="text-xs flex items-center gap-1"
+          >
+            <RefreshCcw className="w-3 h-3" /> Refresh
+          </Button>
+        </div>
+
         <div className="grid gap-4">
           <div>
-            <Label htmlFor="tag-name" className="text-xs sm:text-sm">Tag Name</Label>
+            <Label htmlFor="tag-name">Tag Name</Label>
             <Input
               id="tag-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., JavaScript, React, DevOps"
-              className="text-xs sm:text-sm"
+              placeholder="e.g., JavaScript"
             />
             {name && (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-1">
                 Slug: <span className="font-mono">{slug}</span>
               </p>
             )}
           </div>
+
           <div>
-            <Label htmlFor="tag-description" className="text-xs sm:text-sm">Description (optional)</Label>
+            <Label htmlFor="tag-excerpt">Description (optional)</Label>
             <Textarea
-              id="tag-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this tag"
+              id="tag-excerpt"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              placeholder="Brief description for this tag"
               rows={2}
-              className="text-xs sm:text-sm"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleSubmit} className="flex-1 sm:flex-none text-xs sm:text-sm">
+
+          <div>
+            <Label htmlFor="tag-icon">Icon URL (optional)</Label>
+            <Input
+              id="tag-icon"
+              value={icon}
+              onChange={(e) => setIcon(e.target.value)}
+              placeholder="devicon:react"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSubmit}>
               {editingId ? "Update Tag" : "Create Tag"}
             </Button>
             {editingId && (
-              <Button variant="outline" onClick={handleCancel} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
             )}
@@ -108,44 +196,56 @@ export default function TagManager({
         </div>
       </Card>
 
+      {/* TAG LIST */}
       <div className="grid gap-3">
-        <h3 className="text-base sm:text-lg font-semibold">Tags ({tags.length})</h3>
+        <h3 className="text-base sm:text-lg font-semibold">
+          Tags ({tags.length})
+        </h3>
         {tags.length === 0 ? (
-          <p className="text-xs sm:text-sm text-muted-foreground">No tags yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {loading ? <LogoLoader /> : "No tags found."}
+          </p>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tags.map((tag) => (
-              <Card key={tag.id} className="p-3 sm:p-4">
-                <div className="space-y-3">
-                  <div>
-                    <div className="font-semibold text-sm sm:text-base">{tag.name}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Slug: <span className="font-mono">/{tag.slug}</span>
-                    </div>
-                    {tag.description && (
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-                        {tag.description}
+              <Card key={tag.id} className="p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold">{tag.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Articles: <strong>{tag.article_count}</strong>
                       </p>
+                    </div>
+                    {tag.icon ? (
+                     <Icon icon={tag.icon} className="text-2xl text-primary" />
+                    ):(
+                      <span className="text-2xl">🧩</span>
                     )}
+                    
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(tag)}
-                      className="text-xs"
-                    >
-                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => onDeleteTag(tag.id)}
-                      className="text-xs"
-                    >
-                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
+                  {tag.excerpt && (
+                    <p className="text-xs text-muted-foreground mt-2 line-clamp-3">
+                      {tag.excerpt}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(tag)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(tag.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </Card>
             ))}

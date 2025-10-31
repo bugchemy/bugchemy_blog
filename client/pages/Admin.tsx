@@ -4,16 +4,16 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabaseClient";
 import UserManagement from "@/components/admin/UserManagement";
 import TagManager from "@/components/admin/TagManager";
 import AIArticleApproval from "@/components/admin/AIArticleApproval";
 import ArticlesManager from "@/components/admin/ArticlesManager";
-import { supabase } from "@/lib/supabaseClient";
+import AIStudio from "@/components/admin/AIStudio";
+import CommentsManager from "@/components/admin/CommentsManager";
+import IntegrationsManager from "@/components/admin/IntegrationsManager";
+
+
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
@@ -27,7 +27,6 @@ export default function Admin() {
   const [cover, setCover] = useState("");
   const [content, setContent] = useState("# Hello Bugchemy!\n\n```ts\nconsole.log('Hello, world!')\n```\n");
   const [author, setAuthor] = useState("Saurabh Katiyal");
-  const [customSlug, setCustomSlug] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [posts, setPosts] = useState<number>(0)
@@ -213,11 +212,6 @@ export default function Admin() {
 
 
 
-  const startNewPost = () => {
-// To-do
-
-  };
-
   // ---- UI ----
   return (
     <Layout>
@@ -225,9 +219,11 @@ export default function Admin() {
       <section className="container px-4 py-10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Admin Dashboard</h1>
+          {/** 
           <Button size="sm" variant="outline" onClick={startNewPost}>
             New Article
           </Button>
+          */}
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -237,6 +233,9 @@ export default function Admin() {
             <TabsTrigger value="ai">AI</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="aistudio">AI Studio</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
           {/* Dashboard */}
@@ -268,10 +267,6 @@ export default function Admin() {
           {/* Tags */}
           <TabsContent value="tags" className="mt-6">
             <TagManager
-              tags={tagsData}
-              onAddTag={(t)=>addOrUpdateTag(t)}
-              onUpdateTag={(id, t)=>addOrUpdateTag(t, id)}
-              onDeleteTag={deleteTag}
             />
           </TabsContent>
 
@@ -279,6 +274,22 @@ export default function Admin() {
           <TabsContent value="users" className="mt-6">
             <UserManagement/>
           </TabsContent>
+
+          {/* AI Studio */}
+          <TabsContent value="aistudio" className="mt-6">
+            <AIStudio />
+          </TabsContent>
+
+          {/* Comments */}
+          <TabsContent value="comments" className="mt-6">
+            <CommentsManager />
+          </TabsContent>
+
+          {/* Integrations */}
+          <TabsContent value="integrations" className="mt-6">
+            <IntegrationsManager />
+          </TabsContent>
+
         </Tabs>
       </section>
     </Layout>
