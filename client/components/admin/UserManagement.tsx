@@ -1,257 +1,236 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Edit2, Trash2 } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { LogoLoader } from "@/components/LogoLoader";
-
-type Role = "admin" | "user";
-
-interface User {
-  id: string;
-  name: string;
-  role: Role;
-  avatar?: string | null; // 👈 add this line
-  // Placeholder for future email support
-  email?: string;
-}
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<Role>("user");
+  const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Fetch users from Supabase
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
+  // Predefined Bugchemy avatars
+  const avatars = [
+    "/avatars/avataaars1.png",
+    "/avatars/avataaars2.png",
+    "/avatars/avataaars3.png",
+    "/avatars/avataaars4.png",
+    "/avatars/avataaars5.png",
+    "/avatars/avataaars6.png",
+    "/avatars/avataaars7.png",
+    "/avatars/avataaars8.png",
+    "/avatars/avataaars9.png",
+    "/avatars/avataaars10.png",
+    "/avatars/avataaars11.png",
+    "/avatars/avataaars12.png",
+  ];
+
+  // Fetch users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, is_admin , avatar_url");
+        .select("id, display_name, avatar_url, is_admin, created_at")
+        .order("created_at", { ascending: false });
 
-      if (error) throw error;
-
-      const normalized: User[] = (data || []).map((u) => ({
-        id: u.id,
-        name: u.display_name ?? "Unnamed",
-        role: u.is_admin ? "admin" : "user",
-        avatar: u.avatar_url ?? "/avatars/avataaars1.png",
-        email: undefined, // future placeholder
-      }));
-
-      setUsers(normalized);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setUsers([]);
-    } finally {
+      if (error) {
+        console.error("Error fetching users:", error);
+      } else {
+        setUsers(data || []);
+      }
       setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Handle Add/Update
-  const handleSubmit = async () => {
-    if (!name) return;
-
-    const is_admin = role === "admin";
-
-    try {
-      if (editingId) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ display_name: name, is_admin })
-          .eq("id", editingId);
-
-        if (error) throw error;
-        alert("User updated successfully!");
-      } else {
-        alert("Adding new users is not supported here yet.");
-      }
-    } catch (err) {
-      console.error("Error updating user:", err);
-    } finally {
-      setEditingId(null);
-      setName("");
-      setRole("user");
-      fetchUsers();
-    }
-  };
-
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: any) => {
+    setDisplayName(user.display_name || "");
+    setAvatarUrl(user.avatar_url || "");
+    setIsAdmin(user.is_admin || false);
     setEditingId(user.id);
-    setName(user.name);
-    setRole(user.role);
   };
 
-  const handleCancel = () => {
-    setEditingId(null);
-    setName("");
-    setRole("user");
-  };
+  const handleSave = async (id: string) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        is_admin: isAdmin,
+      })
+      .eq("id", id);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
-    try {
-      const { error } = await supabase.from("profiles").delete().eq("id", id);
-      if (error) throw error;
-      fetchUsers();
-    } catch (err) {
-      console.error("Error deleting user:", err);
+    if (error) {
+      alert("Error updating user: " + error.message);
+    } else {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? { ...u, display_name: displayName, avatar_url: avatarUrl, is_admin: isAdmin }
+            : u
+        )
+      );
+      setEditingId(null);
     }
+    setSaving(false);
   };
+
+  const filteredUsers = useMemo(() => {
+    if (!search.trim()) return users;
+    return users.filter((u) =>
+      u.display_name?.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search, users]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <LogoLoader />
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-6">
-      {/* Add/Edit Form */}
-      <Card className="p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold mb-4">
-          {editingId ? "Edit User" : "Select a user to edit"}
-        </h3>
-        <div className="grid gap-4">
-          <div>
-            <Label htmlFor="user-name" className="text-xs sm:text-sm">
-              Name
-            </Label>
-            <Input
-              id="user-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="User name"
-              className="text-xs sm:text-sm"
-            />
-          </div>
-          <div>
-            <Label htmlFor="user-role" className="text-xs sm:text-sm">
-              Role
-            </Label>
-            <Select value={role} onValueChange={(value: Role) => setRole(value)}>
-              <SelectTrigger className="text-xs sm:text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Future email section */}
-          {/* <div>
-            <Label htmlFor="user-email" className="text-xs sm:text-sm">
-              Email
-            </Label>
-            <Input
-              id="user-email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="text-xs sm:text-sm"
-            />
-          </div> */}
-          <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleSubmit} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              {editingId ? "Update User" : "Select a user first"}
-            </Button>
-            {editingId && (
-              <Button variant="outline" onClick={handleCancel} className="flex-1 sm:flex-none text-xs sm:text-sm">
-                Cancel
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+    <div className="container mx-auto py-10 px-4 max-w-3xl">
+      <h1 className="text-2xl font-semibold mb-6 text-center">User Management</h1>
 
+      {/* Search box */}
+      <div className="mb-6">
+        <Input
+          type="text"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm mx-auto block"
+        />
+      </div>
 
-       <div className="grid gap-3">
-        <h3 className="text-base sm:text-lg font-semibold">Users ({users.length})</h3>
-        {loading ? (
-          <p className="text-xs sm:text-sm text-muted-foreground"><LogoLoader /></p>
-        ) : users.length === 0 ? (
-          <p className="text-xs sm:text-sm text-muted-foreground">No users yet.</p>
-        ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {users.map((user) => (
-          <Card key={user.id} className="p-4 flex flex-col justify-between">
-                {/* Top Row: Avatar + Display Name */}
-                <div className="flex items-center gap-3 mb-3">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      onError={(e) => (e.currentTarget.src = "/default-avatar.png")}
-                      className="w-10 h-10 rounded-full object-cover border"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                      N/A
-                    </div>
-                  )}
-
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base">
-                      {user.name || "Unnamed User"}
-                    </h4>
-                    {user.email && (
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                    )}
-                  </div>
+      {filteredUsers.length === 0 ? (
+        <div className="text-center text-muted-foreground py-10">No users found</div>
+      ) : (
+        <div className="grid gap-6">
+          {filteredUsers.map((user) => (
+            <motion.div
+              key={user.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className={cn(
+                "p-5 rounded-2xl shadow-md border bg-card text-card-foreground transition",
+                editingId === user.id && "ring-2 ring-primary"
+              )}
+            >
+              {/* Avatar & Display Info */}
+              <div className="flex items-center gap-4">
+                <img
+                  src={user.avatar_url || "/web-app-manifest-192x192.png"}
+                  alt={user.display_name || "User"}
+                  className="h-14 w-14 rounded-full object-cover"
+                />
+                <div>
+                  <p className="font-medium">
+                    {user.display_name || "Unnamed User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {user.is_admin ? "Admin" : "User"}
+                  </p>
                 </div>
-
-                {/* Bottom Row: Role + Actions */}
-                <div className="flex items-center justify-between mt-2">
-                  <span
-                    className={`text-xs font-medium ${
-                      user.role ? "text-green-600" : "text-muted-foreground"
-                    }`}
-                  >
-                  <span className="text-xs sm:text-sm font-mono px-2 py-0.5 bg-muted/20 rounded">
-                    {user.role}
-                  </span>
-                  </span>
-
-                  <div className="flex gap-2">
+                <div className="ml-auto">
+                  {editingId === user.id ? (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      disabled={saving}
+                      onClick={() => handleSave(user.id)}
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </Button>
+                  ) : (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleEdit(user)}
-                      className="text-xs p-1"
                     >
-                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(user.id)}
-                      className="text-xs p-1"
-                    >
-                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
+                  )}
                 </div>
-              </Card>
+              </div>
 
-            ))}
-          </div>
-        )}
-      </div>
+              {/* Edit Form */}
+              <AnimatePresence>
+                {editingId === user.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 border-t pt-4 space-y-4"
+                  >
+                    {/* Display Name */}
+                    <div>
+                      <Label>Display Name</Label>
+                      <Input
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
 
+                    {/* Role Dropdown */}
+                    <div>
+                      <Label>Role</Label>
+                      <select
+                        className={cn(
+                          "w-full border rounded-md p-2 mt-1 bg-background text-foreground"
+                        )}
+                        value={isAdmin ? "admin" : "user"}
+                        onChange={(e) => setIsAdmin(e.target.value === "admin")}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
 
-
-
-
+                    {/* Avatar Picker */}
+                    <div>
+                      <Label>Choose Avatar</Label>
+                      <div className="flex flex-wrap gap-3 mt-2 justify-center">
+                        {avatars.map((avatar) => (
+                          <motion.img
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            key={avatar}
+                            src={avatar}
+                            alt="avatar"
+                            className={cn(
+                              "h-16 w-16 rounded-full border-2 cursor-pointer object-cover transition",
+                              avatarUrl === avatar
+                                ? "border-primary ring-2 ring-primary/40"
+                                : "border-transparent hover:border-muted"
+                            )}
+                            onClick={() => setAvatarUrl(avatar)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
