@@ -24,17 +24,27 @@ interface AIJob {
   created_at?: string;
   reviewed_by?: string;
   review_notes?: string;
+  model?: string;
+}
+
+interface AIJobLog {
+  id: string;
+  job_id: string;
+  event: string;
+  message: string;
+  created_at: string;
 }
 
 export default function AIStudio() {
   const [topic, setTopic] = useState("");
-  const [tone, setTone] = useState("Professional");
+  const [tone, setTone] = useState("Technical");
   const [length, setLength] = useState("Medium");
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<AIJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<AIJob | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [jobLogs, setJobLogs] = useState<AIJobLog[]>([]);
 
   // 🧭 Fetch all AI jobs
   async function fetchJobs() {
@@ -42,40 +52,38 @@ export default function AIStudio() {
       .from("ai_jobs")
       .select("*")
       .order("created_at", { ascending: false });
+    if (error) console.error("Error loading jobs:", error);
+    else setJobs(data || []);
+  }
 
-    if (error) {
-      console.error("Error loading jobs:", error);
-      return;
-    }
-    setJobs(data || []);
+  // 🧾 Fetch logs for selected job
+  async function fetchLogs(jobId: string) {
+    const { data, error } = await supabase
+      .from("ai_job_logs")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("created_at", { ascending: true });
+    if (error) console.error("Error fetching logs:", error);
+    else setJobLogs(data || []);
   }
 
   useEffect(() => {
     fetchJobs();
   }, []);
 
-  // 🪄 Trigger new AI job
+  // 🪄 Generate new draft
   async function generateDraft() {
     if (!topic.trim()) return alert("Please enter a topic.");
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("ai_jobs")
-        .insert([
-          {
-            topic,
-            tone,
-            length,
-            tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-            status: "queued",
-            prompt: `Write a ${length}-length blog article about "${topic}" in a ${tone} tone.`,
-          },
-        ])
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke("generate_ai_article", {
+        body: { topic, tone, length, tags: tags.split(",").map((t) => t.trim()) },
+      });
 
       if (error) throw error;
-      alert("AI job queued successfully! Check back shortly.");
+      if (!data?.success) throw new Error(data?.error || "Generation failed");
+
+      alert(`AI job queued successfully! Job ID: ${data.jobId}`);
       setTopic("");
       setTags("");
       fetchJobs();
@@ -87,7 +95,7 @@ export default function AIStudio() {
     }
   }
 
-  // ✅ Approve & publish as article
+  // ✅ Approve & publish
   async function approveAndPublish(job: AIJob) {
     if (!job.result_summary) return alert("This draft is not yet ready.");
     const slug = job.topic.toLowerCase().replace(/\s+/g, "-");
@@ -103,10 +111,9 @@ export default function AIStudio() {
         visibility: "public",
       },
     ]);
-
     if (error) {
-      console.error("Error publishing article:", error);
-      return alert("Error publishing article.");
+      console.error("Error publishing:", error);
+      return alert("Failed to publish.");
     }
 
     await supabase
@@ -118,7 +125,7 @@ export default function AIStudio() {
       })
       .eq("id", job.id);
 
-    alert("Draft approved and saved as a new article!");
+    alert("Draft approved and published!");
     setSelectedJob(null);
     setReviewNotes("");
     fetchJobs();
@@ -156,50 +163,26 @@ export default function AIStudio() {
           </Button>
         </div>
 
-        <p className="text-muted-foreground text-sm">
-          Generate new article drafts using AI. Adjust tone, length, and tags.
-        </p>
-
         <div className="grid md:grid-cols-2 gap-3">
           <div>
             <Label>Topic</Label>
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Understanding Edge Functions"
-            />
+            <Input value={topic} onChange={(e) => setTopic(e.target.value)} />
           </div>
           <div>
             <Label>Tone</Label>
-            <Input
-              value={tone}
-              onChange={(e) => setTone(e.target.value)}
-              placeholder="e.g. Conversational, Technical, Friendly"
-            />
+            <Input value={tone} onChange={(e) => setTone(e.target.value)} />
           </div>
           <div>
             <Label>Length</Label>
-            <Input
-              value={length}
-              onChange={(e) => setLength(e.target.value)}
-              placeholder="Short / Medium / Long"
-            />
+            <Input value={length} onChange={(e) => setLength(e.target.value)} />
           </div>
           <div>
             <Label>Tags</Label>
-            <Input
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="comma,separated,tags"
-            />
+            <Input value={tags} onChange={(e) => setTags(e.target.value)} />
           </div>
         </div>
 
-        <Button
-          onClick={generateDraft}
-          disabled={loading || !topic.trim()}
-          className="mt-2"
-        >
+        <Button onClick={generateDraft} disabled={loading || !topic.trim()}>
           {loading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="animate-spin w-4 h-4" /> Generating...
@@ -213,9 +196,8 @@ export default function AIStudio() {
       {/* Job List */}
       <Card className="p-6 space-y-4">
         <h3 className="text-lg font-semibold">Generated Drafts</h3>
-
         {jobs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No drafts yet.</p>
+          <p>No drafts yet.</p>
         ) : (
           <div className="grid gap-3">
             {jobs.map((job) => (
@@ -224,7 +206,10 @@ export default function AIStudio() {
                 className={`p-4 cursor-pointer hover:border-primary transition ${
                   selectedJob?.id === job.id ? "border-primary" : ""
                 }`}
-                onClick={() => setSelectedJob(job)}
+                onClick={() => {
+                  setSelectedJob(job);
+                  fetchLogs(job.id);
+                }}
               >
                 <div className="flex justify-between items-center">
                   <div>
@@ -232,24 +217,10 @@ export default function AIStudio() {
                     <div className="flex flex-wrap gap-2 mt-1">
                       <Badge variant="outline">{job.tone}</Badge>
                       <Badge variant="outline">{job.length}</Badge>
-                      {job.tags?.map((t) => (
-                        <Badge key={t} variant="secondary">
-                          {t}
-                        </Badge>
-                      ))}
+                      {job.model && <Badge variant="secondary">{job.model}</Badge>}
                     </div>
                   </div>
-                  <Badge
-                    className={`${
-                      job.status === "approved"
-                        ? "bg-green-100 text-green-700"
-                        : job.status === "rejected"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {job.status}
-                  </Badge>
+                  <Badge>{job.status}</Badge>
                 </div>
               </Card>
             ))}
@@ -257,18 +228,14 @@ export default function AIStudio() {
         )}
       </Card>
 
-      {/* Selected Draft Review */}
+      {/* Selected Draft */}
       {selectedJob && (
         <Card className="p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">
-              Reviewing: {selectedJob.topic}
+              Review: {selectedJob.topic}
             </h3>
-            <Button
-              variant="ghost"
-              onClick={() => setSelectedJob(null)}
-              className="text-xs"
-            >
+            <Button variant="ghost" onClick={() => setSelectedJob(null)}>
               Close
             </Button>
           </div>
@@ -283,29 +250,39 @@ export default function AIStudio() {
 
           <Markdown content={selectedJob.result_summary || "*Draft not ready yet...*"} />
 
+          {jobLogs.length > 0 && (
+            <div className="bg-muted/30 rounded-md p-3 text-sm border">
+              <h4 className="font-semibold mb-2">🧾 Job Activity Log</h4>
+              <ul className="space-y-1">
+                {jobLogs.map((log) => (
+                  <li key={log.id}>
+                    <span className="text-muted-foreground">
+                      {new Date(log.created_at).toLocaleString()} —{" "}
+                      <strong className="text-primary">{log.event}</strong>
+                    </span>
+                    {log.message && (
+                      <div className="text-xs ml-3">{log.message}</div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Review Notes</Label>
             <Textarea
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
-              placeholder="Add review feedback or context"
             />
           </div>
 
           <div className="flex gap-3">
-            <Button
-              onClick={() => approveAndPublish(selectedJob)}
-              disabled={selectedJob.status === "approved"}
-              className="flex items-center gap-2"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Approve & Publish
+            <Button onClick={() => approveAndPublish(selectedJob)}>
+              <CheckCircle2 className="w-4 h-4 mr-1" /> Approve & Publish
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => rejectDraft(selectedJob)}
-              className="flex items-center gap-2"
-            >
-              <XCircle className="w-4 h-4" /> Reject
+            <Button variant="destructive" onClick={() => rejectDraft(selectedJob)}>
+              <XCircle className="w-4 h-4 mr-1" /> Reject
             </Button>
           </div>
         </Card>
