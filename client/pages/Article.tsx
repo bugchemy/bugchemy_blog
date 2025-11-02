@@ -219,7 +219,7 @@ export default function Article(): JSX.Element {
 
         <article className="max-w-3xl mx-auto w-full">
           <h1 className="mb-4 text-4xl font-bold">{post.title}</h1>
-          <div className="mb-6 text-sm text-gray-500 flex flex-wrap gap-2 items-center">
+          <div className="mb-2 text-sm text-gray-500 flex flex-wrap gap-2 items-center">
             {post.profiles?.avatar_url && (
               <img
                 src={post.profiles.avatar_url}
@@ -231,6 +231,21 @@ export default function Article(): JSX.Element {
             {post.published_at && (
               <span>• {new Date(post.published_at).toLocaleDateString()}</span>
             )}
+          </div>
+          <div className="not-prose mt-0 mb-6 text-sm text-gray-500 flex flex-wrap gap-2 items-center">
+            {post.article_tags && post.article_tags.length > 0 && (
+            <div className="mt-2 flex gap-2 flex-wrap">
+              {post.article_tags.map((t) => (
+                <Badge
+                  key={t.tag_name}
+                  variant="secondary"
+                  className="bg-accent/15 text-accent capitalize"
+                >
+                  {t.tag_name}
+                </Badge>
+              ))}
+            </div>
+          )}
           </div>
 
           {post.cover_url && (
@@ -278,19 +293,7 @@ export default function Article(): JSX.Element {
           {/* --- Second half of article --- */}
           <Markdown content={secondHalf} />
 
-          {post.article_tags && post.article_tags.length > 0 && (
-            <div className="mt-6 flex gap-2 flex-wrap">
-              {post.article_tags.map((t) => (
-                <Badge
-                  key={t.tag_name}
-                  variant="secondary"
-                  className="bg-accent/15 text-accent capitalize"
-                >
-                  {t.tag_name}
-                </Badge>
-              ))}
-            </div>
-          )}
+          
 
           {/* --- Bottom Ad Section --- */}
           <section className="my-10">
