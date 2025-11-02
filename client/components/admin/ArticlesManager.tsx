@@ -7,10 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
+import Markdown from "@/components/Markdown";
 
 interface Tag {
   id: number | string;
@@ -475,9 +472,7 @@ export default function ArticlesManager() {
             </TabsContent>
             <TabsContent value="preview">
               <div className="prose dark:prose-invert max-w-none p-4 border rounded-md">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeHighlight]}>
-                  {article.content ?? ""}
-                </ReactMarkdown>
+                <Markdown content={article.content ?? ""}/>
               </div>
             </TabsContent>
           </Tabs>

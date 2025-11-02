@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import SEO from "@/components/SEO";
 
 function Logo({ className = "" }: { className?: string }) {
   return (
@@ -35,6 +36,19 @@ function ThemeToggle() {
     document.documentElement.classList.toggle("dark", isDark);
     setDark(isDark);
     setMounted(true);
+  }, []);
+
+    useEffect(() => {
+    const existing = document.querySelector('script[data-adsbygoogle]');
+    if (!existing) {
+      const script = document.createElement("script");
+      script.setAttribute("data-adsbygoogle", "true");
+      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      script.setAttribute("data-ad-client", "ca-pub-XXXXXXXXXXXX"); // 🔧 Replace with your AdSense ID
+      document.head.appendChild(script);
+    }
   }, []);
 
   const toggle = () => {
@@ -535,6 +549,20 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <InteractiveBackground />
+
+      <SEO
+        title="Bugchemy — AI Developer Blog"
+        description="Explore AI-generated developer blogs, tutorials, and project insights at Bugchemy."
+        image="/bugchemy-og.svg"
+        url="https://bugchemy.com"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Bugchemy",
+          url: "https://bugchemy.com",
+          description: "AI-powered blog for developers and creators.",
+        }}
+      />
       {!isAuthPage && <Header />}
       <main className="flex-1">{children}</main>
       {!isAuthPage && <Footer />}
