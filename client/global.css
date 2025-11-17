@@ -128,14 +128,16 @@
 
 @layer base {
   .prose {
-    word-break: break-word;
-    overflow-wrap: anywhere;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   .prose pre {
     overflow-x: auto;
   }
   .prose code {
-    word-break: break-word;
+    word-break: keep-all;
+    white-space: nowrap;
+    display: inline;
   }
   .prose table {
     display: block;
@@ -147,7 +149,12 @@
   }
 
   @media (max-width: 360px) {
-    h1, h2, h3, p, li, a, blockquote { word-break: break-word; overflow-wrap: anywhere; }
+    h1, h2, h3, blockquote { word-break: break-word; }
+    p, li, a { overflow-wrap: break-word; }
+    .prose code {
+      word-break: keep-all;
+      white-space: nowrap;
+    }
     .container { padding-left: 0.75rem; padding-right: 0.75rem; }
   }
 }

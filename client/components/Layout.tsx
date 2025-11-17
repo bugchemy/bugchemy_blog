@@ -175,6 +175,10 @@ function Header() {
     navigate("/auth");
   };
 
+    const handleUXAssist = async () => {
+    navigate("/ui-assist");
+  };
+
   const link = (to: string, label: string) => (
     <Link
       to={to}
@@ -272,6 +276,13 @@ function Header() {
                     onClick={handleLogout}
                   >
                     Logout
+                  </button>
+
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-accent/20"
+                    onClick={handleUXAssist}
+                  >
+                    UX Assist
                   </button>
                 </div>
               )}

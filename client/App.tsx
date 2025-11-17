@@ -17,6 +17,7 @@ import Article from "./pages/Article";
 import About from "./pages/About";
 import Newsletter from "./pages/Newsletter";
 import Contact from "./pages/Contact";
+import UIComponent from "./pages/UIComponents";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -92,6 +93,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Contact />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ui-assist"
+            element={
+              <ProtectedRoute>
+                <UIComponent />
               </ProtectedRoute>
             }
           />

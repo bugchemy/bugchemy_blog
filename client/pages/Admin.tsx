@@ -75,7 +75,7 @@ export default function Admin() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-1 lg:gap-2 h-auto flex-wrap">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-1 lg:gap-2 h-auto flex-wrap">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="articles">Articles</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
@@ -87,12 +87,13 @@ export default function Admin() {
 
           {/* Dashboard */}
           <TabsContent value="dashboard" className="mt-6">
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{users.length}</div><p>Users</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{tagsData.length}</div><p>Tags</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
             </div>
+            
           </TabsContent>
 
 
