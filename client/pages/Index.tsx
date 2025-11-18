@@ -52,7 +52,8 @@ export default function Index() {
       setLoading(true);
       const { data, error } = await supabase
         .from("tags")
-        .select("id, name, excerpt, icon");
+        .select("id, name, excerpt, icon")
+        .eq("homepage_eligible", true);
 
       if (error) {
         console.error("Error fetching tags:", error);
