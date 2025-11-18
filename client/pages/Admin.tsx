@@ -111,9 +111,9 @@ export default function Admin() {
           {/* Dashboard */}
           <TabsContent value="dashboard" className="mt-6">
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
-              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
-              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{users.length}</div><p>Users</p></Card>
-              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{tagsData.length}</div><p>Tags</p></Card>
+              <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
+              <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{users.length}</div><p>Total Users</p></Card>
+              <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{tagsData.length}</div><p>Total Tags</p></Card>
               {/** 
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
               */}
@@ -121,8 +121,8 @@ export default function Admin() {
             </div>
             <h1 className="mt-6 text-l sm:text-l font-bold tracking-tight">AI Studio Stats</h1>
             <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
-                <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiGenCount}</div><p>Total AI Article</p></Card>
-                <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobCount}</div><p>Pending Approval</p></Card>
+                <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{aiGenCount}</div><p>Total AI Article</p></Card>
+                <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{aiJobCount}</div><p>Pending Approval</p></Card>
                 
             </div>
             
