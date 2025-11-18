@@ -408,7 +408,7 @@ export default function UIComponents() {
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Loading Progress</span>
+                    <span className="text-sm font-medium"><LogoLoader /></span>
                     <span className="text-sm text-muted-foreground">{progressValue}%</span>
                   </div>
                   <Progress value={progressValue} className="h-2" />

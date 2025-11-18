@@ -44,10 +44,10 @@ export default function ArticlesManager() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [Articletab, setArticleTab] = useState("all_article");
+  const [Articletab, setArticleTab] = useState("draft");
 
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 9;
 
   const [article, setArticle] = useState<Article>({
     title: "",
@@ -258,13 +258,24 @@ export default function ArticlesManager() {
   const totalPages = Math.ceil(filteredArticles.length / pageSize);
 
   return (
-    <div className="p-4 space-y-4">
-      <Tabs value={Articletab} onValueChange={setArticleTab}>
-        <TabsList className="grid w-full grid-cols-3 gap-2">
-          <TabsTrigger value="all_article">All Articles</TabsTrigger>
-          <TabsTrigger value="draft">Draft</TabsTrigger>
-          <TabsTrigger value="pending">Pending Review</TabsTrigger>
-        </TabsList>
+    <div className="p-0 space-y-0">
+<Tabs value={Articletab} onValueChange={editing ? undefined : setArticleTab}>
+  <TabsList
+    className={`grid w-full grid-cols-2 gap-2 transition-opacity duration-300 ${
+      editing ? "opacity-50 pointer-events-none" : ""
+    }`}
+  >
+    <TabsTrigger value="draft">AI Draft</TabsTrigger>
+    <TabsTrigger value="all_article">All Articles</TabsTrigger>
+  </TabsList>
+
+  {editing && (
+    <div className="mt-2 p-2 text-sm bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200 text-yellow-800 rounded-md shadow-sm animate-fade-in">
+      ✏️ Editing in progress – finish editing to switch tabs.
+    </div>
+  )}
+
+
 
         {!editing && Articletab === "all_article" && (
           <div className="flex justify-between items-center mt-4">
@@ -272,7 +283,7 @@ export default function ArticlesManager() {
               placeholder="Search articles..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
+              className="max-w mr-6"
             />
             <Button onClick={handleNewArticle}>+ New Article</Button>
           </div>
@@ -382,7 +393,11 @@ const ArticleEditorForm = ({
       <div>
         <label className="text-sm font-semibold">Status</label>
         <select
-          className="w-full p-2 rounded-md border"
+          className="w-full p-2 rounded-md border
+                    bg-background text-foreground 
+                    border-input 
+                    focus:outline-none focus:ring-2 focus:ring-ring
+                    dark:bg-background dark:text-foreground dark:border-input" 
           value={article.status}
           onChange={(e) => setArticle({ ...article, status: e.target.value })}
         >
@@ -394,7 +409,11 @@ const ArticleEditorForm = ({
       <div>
         <label className="text-sm font-semibold">Visibility</label>
         <select
-          className="w-full p-2 rounded-md border"
+          className="w-full p-2 rounded-md border
+                    bg-background text-foreground 
+                    border-input 
+                    focus:outline-none focus:ring-2 focus:ring-ring
+                    dark:bg-background dark:text-foreground dark:border-input" 
           value={article.visibility}
           onChange={(e) => setArticle({ ...article, visibility: e.target.value })}
         >
@@ -406,12 +425,22 @@ const ArticleEditorForm = ({
 
     <div className="flex flex-wrap gap-2">
       {selectedTags.map((t: any) => (
-        <span key={t.name} className="px-2 py-1 bg-secondary rounded-md cursor-pointer" onClick={() => removeTag(t.name)}>
+        <span key={t.name} className="flex items-center gap-1 px-2 py-1 text-xs rounded-full 
+                                  bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground 
+                                  transition-all"
+                                   onClick={() => removeTag(t.name)}>
           {t.name} ✕
         </span>
       ))}
     </div>
-    <div className="flex gap-2 mt-2">
+
+
+    {/***** */}
+
+  
+
+    {/***** */}
+    <div className="sm:grid-cols-2 lg:grid-cols-3">
       <Input
         placeholder="Add or select a tag"
         value={tagInput ?? ""}

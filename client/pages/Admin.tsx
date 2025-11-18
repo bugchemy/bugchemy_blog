@@ -12,6 +12,7 @@ import ArticlesManager from "@/components/admin/ArticlesManager";
 import AIStudio from "@/components/admin/AIStudio";
 import CommentsManager from "@/components/admin/CommentsManager";
 import IntegrationsManager from "@/components/admin/IntegrationsManager";
+import FeaturedArticleManager from "@/components/admin/FeaturedArticleManager";
 
 
 
@@ -24,6 +25,8 @@ export default function Admin() {
   const [posts, setPosts] = useState<number>(0)
   const [aiJobCount, setaiJobCount] = useState<number>(0)
   const [aiGenCount, setaiGenCount] = useState<number>(0)
+  const [featuredCount, setfeaturedCount] = useState<number>(0)
+  const [commentsCount, setcommentsCount] = useState<number>(0)
   const [users, setUsers] = useState<any[]>([]);
   const [tagsData, setTagsData] = useState<any[]>([]);
   const [aiJobs, setAIJobs] = useState<any[]>([]);
@@ -75,12 +78,31 @@ export default function Admin() {
     if (aiGenErr) {           
       console.error("Error fetching AI jobs count:", aiGenErr);
     }
+    // Fetch Featured Article counts
+    const { count: feat_count, error: feat_err } = await supabase
+      .from("featured_articles")       
+      .select("*", { count: "exact", head: true })
+      ;
+    if (feat_err) {           
+      console.error("Error fetching AI jobs count:", feat_err);
+    }
+
+    // Fetch comments on Article counts
+    const { count: comment_count, error: comment_err } = await supabase
+      .from("comments")       
+      .select("*", { count: "exact", head: true })
+      ;
+    if (comment_err) {           
+      console.error("Error fetching AI jobs count:", comment_err);
+    }
     
     setPosts(count || 0);
     setTagsData(tagsRes || []);
     setUsers(profiles || []);
     setaiJobCount(aiCnt || 0);
     setaiGenCount(aiGenCnt || 0);
+    setfeaturedCount(feat_count || 0);
+    setcommentsCount(comment_count || 0);
     setLoading(false);
   };
 
@@ -98,10 +120,11 @@ export default function Admin() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="articles">Articles</TabsTrigger>
             <TabsTrigger value="aistudio">AI Studio</TabsTrigger>
+            <TabsTrigger value="featured">Featured Articles</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            
           </TabsList>
 
           {/* Dashboard */}
@@ -110,16 +133,13 @@ export default function Admin() {
               <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
               <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{users.length}</div><p>Total Users</p></Card>
               <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{tagsData.length}</div><p>Total Tags</p></Card>
-              {/** 
-              <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
-              */}
-
+              <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{featuredCount}</div><p>Total Featured</p></Card>
+              <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{commentsCount}</div><p>Total Comments</p></Card>
             </div>
             <h1 className="mt-6 text-l sm:text-l font-bold tracking-tight">AI Studio Stats</h1>
             <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
                 <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{aiGenCount}</div><p>Total AI Article</p></Card>
                 <Card className="p-4 sm:p-6 items-center justify-center text-center"><div className="text-2xl font-bold">{aiJobCount}</div><p>Pending Approval</p></Card>
-                
             </div>
             
           </TabsContent>
@@ -153,8 +173,8 @@ export default function Admin() {
           </TabsContent>
 
           {/* Integrations */}
-          <TabsContent value="integrations" className="mt-6">
-            <IntegrationsManager />
+          <TabsContent value="featured" className="mt-6">
+            <FeaturedArticleManager />
           </TabsContent>
 
         </Tabs>

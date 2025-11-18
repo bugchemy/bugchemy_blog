@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { LogoLoader } from "@/components/LogoLoader";
 
 type Comment = {
   id: string;
@@ -160,7 +161,7 @@ export default function Comments({ articleId }: CommentsProps) {
 };
 
   if (loading) {
-    return <p className="text-center text-muted-foreground">Loading comments...</p>;
+    return  <div className="flex items-center justify-center h-screen text-lg"> <LogoLoader /> </div>
   }
 
   return (
