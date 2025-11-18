@@ -8,10 +8,20 @@ import { cn } from "@/lib/utils";
 
 export default function Markdown({ content }: { content: string }) {
   // Preprocess content to mark bracket highlights
-  const processedContent = content.replace(
-    /\[([^\[\]]+)\]/g,
-    '<span class="bracket-highlight">[$1]</span>'
+  //const processedContent_temp = content.replace(
+  //  /\[([^\[\]]+)\]/g,
+  //  '<span class="bracket-highlight">[$1]</span>'
+  //);
+
+  let processedContent = content.replace(
+    /(`)([^`\n]+)(`)/g,
+    (_, _1, text) => `**${text.trim()}**`
   );
+
+  processedContent = processedContent
+    .replace(/(?<!\])\[(?!.*\]\()/g, '⟦')
+    .replace(/\](?!\()/g, '⟧')
+    .replace(/⟦([^⟦⟧]+)⟧/g, '**$1**');
 
   return (
     <ReactMarkdown

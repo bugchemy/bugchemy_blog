@@ -679,7 +679,7 @@ export default function AIStudio() {
 
               <div className="flex gap-3">
                 <Button onClick={() => approveAndPublish(selectedJob)} disabled={publishing || selectedJob.status !== "completed" || Boolean(selectedJob.published_article_id)}>
-                  {publishing ? (<span className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /> Publishing...</span>) : (<><CheckCircle2 className="w-4 h-4 mr-1" /> Approve & Publish</>)}
+                  {publishing ? (<span className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /> Publishing...</span>) : (<><CheckCircle2 className="w-4 h-4 mr-1" />Submit for Review</>)}
                 </Button>
 
                 <Button variant="destructive" onClick={() => rejectDraft(selectedJob)} disabled={Boolean(selectedJob.published_article_id) || selectedJob.status === "published"}>
