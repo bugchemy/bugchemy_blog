@@ -57,29 +57,25 @@ export default function Admin() {
    if (profErr) console.error("Error fetching profiles:", profErr);
 
 
-    // Fetch AI_Jobs Count
+    // Fetch AI_Jobs Count where AI generated is true which means pending to be reviewed
     const { count: aiCnt, error: aiErr } = await supabase
       .from("articles")       // ✅ Correct table name
       .select("*", { count: "exact", head: true })
       .eq("status", "draft")
       .eq("ai_generated", true)
       ;
-
-    if (aiErr) {            // ✅ Correct error variable
+    if (aiErr) {           
       console.error("Error fetching AI jobs count:", aiErr);
     }
-
+    // Fetch AI_Jobs generated article count
     const { count: aiGenCnt, error: aiGenErr } = await supabase
-      .from("ai_jobs")       // ✅ Correct table name
+      .from("ai_jobs")       
       .select("*", { count: "exact", head: true })
       ;
-      console.log("aiGenCnt:", aiGenCnt);
-
-    if (aiGenErr) {            // ✅ Correct error variable
+    if (aiGenErr) {           
       console.error("Error fetching AI jobs count:", aiGenErr);
     }
     
-
     setPosts(count || 0);
     setTagsData(tagsRes || []);
     setUsers(profiles || []);
