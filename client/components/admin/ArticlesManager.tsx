@@ -373,7 +373,11 @@ export default function ArticlesManager() {
             <div>
               <label className="text-sm font-semibold">Status</label>
               <select
-                className="w-full border rounded-md p-2"
+                className=" w-full p-2 rounded-md border
+                            bg-background text-foreground 
+                            border-input 
+                            focus:outline-none focus:ring-2 focus:ring-ring
+                            dark:bg-background dark:text-foreground dark:border-input"
                 value={article.status}
                 onChange={(e) => setArticle({ ...article, status: e.target.value })}
               >
@@ -385,7 +389,11 @@ export default function ArticlesManager() {
             <div>
               <label className="text-sm font-semibold">Visibility</label>
               <select
-                className="w-full border rounded-md p-2"
+                className="w-full border rounded-md p-2
+                            bg-background text-foreground 
+                            border-input 
+                            focus:outline-none focus:ring-2 focus:ring-ring
+                            dark:bg-background dark:text-foreground dark:border-input"
                 value={article.visibility}
                 onChange={(e) => setArticle({ ...article, visibility: e.target.value })}
               >

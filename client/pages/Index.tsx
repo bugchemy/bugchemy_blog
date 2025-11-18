@@ -297,6 +297,7 @@ export default function Index() {
             <form
               className="mt-6 flex flex-col sm:flex-row gap-3"
               onSubmit={(e) => e.preventDefault()}
+              disabled
             >
               <input
                 type="email"
@@ -304,10 +305,10 @@ export default function Index() {
                 placeholder="you@devmail.com"
                 className="flex-1 rounded-md border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button type="submit">Subscribe</Button>
+              <Button type="submit" disabled>Subscribe</Button>
             </form>
             <p className="mt-2 text-xs text-muted-foreground">
-              We’ll integrate Mailchimp/ConvertKit next.
+              
             </p>
           </div>
         </div>

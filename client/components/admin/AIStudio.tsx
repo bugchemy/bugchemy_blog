@@ -463,12 +463,9 @@ export default function AIStudio() {
     }
   }
 
-  // UI: dark class wrapper
-  const rootClass = darkMode ? "dark" : "";
-
   // Render
   return (
-    <div className={`${rootClass} space-y-6`}>
+    <div className="space-y-6">
       {/* top control bar */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-2">
@@ -503,7 +500,12 @@ export default function AIStudio() {
               {/* Tone */}
               <div>
                 <Label>Tone</Label>
-                <select className="border rounded-md w-full p-2" value={tone} onChange={(e) => setTone(e.target.value)}>
+                <select className="border rounded-md w-full p-2
+                            bg-background text-foreground 
+                            border-input 
+                            focus:outline-none focus:ring-2 focus:ring-ring
+                            dark:bg-background dark:text-foreground dark:border-input" 
+                value={tone} onChange={(e) => setTone(e.target.value)}>
                   {toneOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -511,12 +513,17 @@ export default function AIStudio() {
               {/* Length */}
               <div>
                 <Label>Length</Label>
-                <select className="border rounded-md w-full p-2" value={length} onChange={(e) => setLength(e.target.value)}>
+                <select className="border rounded-md w-full p-2
+                            bg-background text-foreground 
+                            border-input 
+                            focus:outline-none focus:ring-2 focus:ring-ring
+                            dark:bg-background dark:text-foreground dark:border-input"
+                value={length} onChange={(e) => setLength(e.target.value)}>
                   {lengthOptions.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
 
-              {/* Tags multi-select */}
+              {/* Tags multi-select 
               <div>
                 <Label>Tags</Label>
 
@@ -539,14 +546,7 @@ export default function AIStudio() {
 
                   <div className="mt-2">
                     <div className="relative">
-                      <button
-                        type="button"
-                        className="w-full border rounded-md p-2 text-left flex justify-between items-center"
-                        onClick={() => setTab("tags")}
-                      >
-                        Manage tags...
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
+
                       <div className="mt-2 grid gap-1 max-h-40 overflow-auto">
                         {allTags.map((tag) => {
                           const active = !!selectedTags.find((t) => t.id === tag.id);
@@ -566,6 +566,61 @@ export default function AIStudio() {
                   </div>
                 </div>
               </div>
+              */}
+
+
+              {/* Tags Multi-select */}
+<div className="space-y-3">
+  <Label className="text-sm font-medium">Tags</Label>
+
+  {/* Selected Tags Display */}
+  <div className="flex flex-wrap gap-2 min-h-[38px] rounded-md border bg-background px-3 py-2">
+    {selectedTags.length === 0 ? (
+      <span className="text-sm text-muted-foreground">No tags selected</span>
+    ) : (
+      selectedTags.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => toggleTag(t)}
+          className="flex items-center gap-1 px-2 py-1 text-xs rounded-full 
+                     bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground 
+                     transition-all"
+        >
+          {t.name} <span className="font-semibold">×</span>
+        </button>
+      ))
+    )}
+  </div>
+
+  {/* Tags Selector List */}
+  <div className="rounded-lg border bg-muted/30 p-2 max-h-48 overflow-auto">
+    <div className="grid gap-1">
+      {allTags.map((tag) => {
+        const active = !!selectedTags.find((t) => t.id === tag.id);
+        return (
+          <div
+            key={tag.id}
+            onClick={() => toggleTag(tag)}
+            className={`
+              flex items-center justify-between cursor-pointer px-3 py-2 rounded-md text-sm 
+              transition-all border
+              ${active
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "hover:bg-muted/50 border-transparent"
+              }
+            `}
+          >
+            <span>{tag.name}</span>
+            {active && <CheckCircle2 className="w-4 h-4" />}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+              
+
             </div>
 
             <div className="flex gap-2">
@@ -573,9 +628,16 @@ export default function AIStudio() {
                 {loading ? (<span className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /> Generating...</span>) : ("Queue AI Draft")}
               </Button>
 
-              <Button variant="ghost" onClick={() => { setTopic(""); setSelectedTags([]); setTone("Technical"); setLength("Medium"); }}>
+              <Button variant="outline" onClick={() => { setTopic(""); setSelectedTags([]); setTone("Technical"); setLength("Medium"); }}>
                 Clear
               </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setTab("tags")}
+                  >
+                   Manage Tags
+                  </Button>
 
               <div className="ml-auto text-sm text-muted-foreground">
                 {selectedTags.length > 0 && <span>Selected tags: {selectedTags.map(t => t.name).join(", ")}</span>}
