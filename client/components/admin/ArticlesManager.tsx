@@ -53,6 +53,7 @@ export default function ArticlesManager() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [Articletab, setArticleTab] = useState("all_article");
 
   const [article, setArticle] = useState<Article>({
     title: "",
@@ -297,9 +298,17 @@ export default function ArticlesManager() {
   return (
     <div className="p-4 space-y-4">
 
+      <Tabs value={Articletab} onValueChange={setArticleTab}>
+         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-1 lg:gap-2 h-auto flex-wrap">
+            <TabsTrigger value="all_article">All Article</TabsTrigger>
+            <TabsTrigger value="draft">Pending Review</TabsTrigger>
+
+          </TabsList>
+
+          <TabsContent value="all_article" className="mt-3">
       {!editing && (
         <div className="flex justify-between items-center">
-          <Input
+          <Input 
             placeholder="Search articles..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -310,7 +319,7 @@ export default function ArticlesManager() {
       )}
 
       {!editing && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mt-3 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredArticles.map((a) => (
             <Card key={a.id} className="hover:shadow-lg transition">
               <CardHeader>
@@ -492,7 +501,8 @@ export default function ArticlesManager() {
           </Tabs>
         </Card>
       )}
-
+      </TabsContent>
+    </Tabs>
     </div>
   );
 }
