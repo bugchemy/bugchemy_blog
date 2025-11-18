@@ -119,7 +119,7 @@ export default function UserManagement() {
       {filteredUsers.length === 0 ? (
         <div className="text-center text-muted-foreground py-10">No users found</div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid gap-2 mt-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {filteredUsers.map((user) => (
             <motion.div
               key={user.id}
