@@ -102,7 +102,7 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-3xl">
+    <div className="p-4 space-y-4">
       <h1 className="text-2xl font-semibold mb-6 text-center">User Management</h1>
 
       {/* Search box */}
@@ -119,7 +119,7 @@ export default function UserManagement() {
       {filteredUsers.length === 0 ? (
         <div className="text-center text-muted-foreground py-10">No users found</div>
       ) : (
-        <div className="grid gap-2 mt-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 mt-6 grid-cols-1 lg:grid-cols-3 xl:grid-cols-5">
           {filteredUsers.map((user) => (
             <motion.div
               key={user.id}
