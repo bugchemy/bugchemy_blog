@@ -38,6 +38,7 @@ export default function Article(): JSX.Element {
   const [related, setRelated] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [headings, setHeadings] = useState<Heading[]>([]);
+  const [isImageError, setIsImageError] = useState(false);
 
   // --- ADDED: handle AdSense load (optional)
   useEffect(() => {
@@ -248,11 +249,12 @@ export default function Article(): JSX.Element {
           )}
           </div>
 
-          {post.cover_url && (
+          {post.cover_url && !isImageError && (
             <img
               src={post.cover_url}
               alt={post.title}
               className="mb-6 rounded-lg w-full"
+              onError={() => setIsImageError(true)}
             />
           )}
 

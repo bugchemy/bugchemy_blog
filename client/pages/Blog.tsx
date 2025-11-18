@@ -212,7 +212,6 @@ export default function Blog() {
         </div>
 
         {/* Article Grid */}
-        {/* Article Grid */}
         {loading && page === 1 ? (
           <div className="flex justify-center py-20">
             <LogoLoader />
@@ -228,15 +227,15 @@ export default function Blog() {
               <Link to={`/blog/${a.slug}`} key={a.slug + a.id} className="group">
                 <Card className="overflow-hidden hover:border-primary/40 transition-colors">
                   {a.cover_url && (
-                    <AspectRatio ratio={16 / 9}>
                       <img
                         src={a.cover_url}
                         alt={a.title}
-                        className="h-full w-full object-cover"
+                        className="w-full h-auto max-h-64 object-cover rounded-t-md"
                         loading="lazy"
+                        onError={(e) => (e.currentTarget.style.display = "none")}
                       />
-                    </AspectRatio>
-                  )}
+                    )}
+
                   <div className={`p-5 ${!a.cover_url ? "pt-3" : ""}`}>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {a.author?.avatar && (
@@ -245,6 +244,7 @@ export default function Blog() {
                           alt=""
                           className="h-5 w-5 rounded-full"
                           loading="lazy"
+                          onError={(e) => (e.currentTarget.style.display = "none")}
                         />
                       )}
                       <span>{a.author?.name ?? "Bugchemy"}</span>
