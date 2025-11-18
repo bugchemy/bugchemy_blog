@@ -22,6 +22,8 @@ function slugify(s: string) {
 export default function Admin() {
   // Basic states
   const [posts, setPosts] = useState<number>(0)
+  const [aiJobCount, setaiJobCount] = useState<number>(0)
+  const [aiGenCount, setaiGenCount] = useState<number>(0)
   const [users, setUsers] = useState<any[]>([]);
   const [tagsData, setTagsData] = useState<any[]>([]);
   const [aiJobs, setAIJobs] = useState<any[]>([]);
@@ -54,14 +56,35 @@ export default function Admin() {
     const { data: profiles, error: profErr } = await supabase.from("profiles").select("*");
    if (profErr) console.error("Error fetching profiles:", profErr);
 
-    // Fetch AI jobs
-    const { data: jobs, error: jobErr } = await supabase.from("ai_jobs").select("*").order("created_at", { ascending: false });
-    if (jobErr) console.error("Error fetching AI jobs:", jobErr);
+
+    // Fetch AI_Jobs Count
+    const { count: aiCnt, error: aiErr } = await supabase
+      .from("articles")       // ✅ Correct table name
+      .select("*", { count: "exact", head: true })
+      .eq("status", "draft")
+      .eq("ai_generated", true)
+      ;
+
+    if (aiErr) {            // ✅ Correct error variable
+      console.error("Error fetching AI jobs count:", aiErr);
+    }
+
+    const { count: aiGenCnt, error: aiGenErr } = await supabase
+      .from("ai_jobs")       // ✅ Correct table name
+      .select("*", { count: "exact", head: true })
+      ;
+      console.log("aiGenCnt:", aiGenCnt);
+
+    if (aiGenErr) {            // ✅ Correct error variable
+      console.error("Error fetching AI jobs count:", aiGenErr);
+    }
+    
 
     setPosts(count || 0);
     setTagsData(tagsRes || []);
     setUsers(profiles || []);
-    setAIJobs(jobs || []);
+    setaiJobCount(aiCnt || 0);
+    setaiGenCount(aiGenCnt || 0);
     setLoading(false);
   };
 
@@ -78,9 +101,9 @@ export default function Admin() {
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-1 lg:gap-2 h-auto flex-wrap">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="articles">Articles</TabsTrigger>
+            <TabsTrigger value="aistudio">AI Studio</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="aistudio">AI Studio</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
@@ -91,7 +114,16 @@ export default function Admin() {
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{posts}</div><p>Total Articles</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{users.length}</div><p>Users</p></Card>
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{tagsData.length}</div><p>Tags</p></Card>
+              {/** 
               <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobs.filter(j=>j.status==="queued").length}</div><p>Pending AI</p></Card>
+              */}
+
+            </div>
+            <h1 className="mt-6 text-l sm:text-l font-bold tracking-tight">AI Studio Stats</h1>
+            <div className="mt-6 grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+                <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiGenCount}</div><p>Total AI Article</p></Card>
+                <Card className="p-4 sm:p-6"><div className="text-2xl font-bold">{aiJobCount}</div><p>Pending Approval</p></Card>
+                
             </div>
             
           </TabsContent>

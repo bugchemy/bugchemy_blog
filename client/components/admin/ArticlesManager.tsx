@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import Markdown from "@/components/Markdown";
-
+import { Trash2, Edit2, RefreshCcw } from "lucide-react";
 interface Tag {
   id: number | string;
   name: string;
@@ -296,6 +296,7 @@ export default function ArticlesManager() {
 
   return (
     <div className="p-4 space-y-4">
+
       {!editing && (
         <div className="flex justify-between items-center">
           <Input
@@ -317,8 +318,13 @@ export default function ArticlesManager() {
                 <p className="text-sm text-muted-foreground">{a.slug}</p>
               </CardHeader>
               <CardContent>
+                {/** 
                 <Button variant="outline" size="sm" onClick={() => handleEdit(a)}>
                   Edit
+                </Button>
+                */}
+                <Button size="sm" onClick={() => handleEdit(a)} >
+                    <Edit2 className="w-1 h-1" />
                 </Button>
               </CardContent>
             </Card>
@@ -478,6 +484,7 @@ export default function ArticlesManager() {
           </Tabs>
         </Card>
       )}
+
     </div>
   );
 }
