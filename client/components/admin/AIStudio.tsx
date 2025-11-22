@@ -36,6 +36,8 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Pagination, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useToast } from "@/hooks/use-toast";
+import { ToastClose } from "@/components/ui/toast";
 
 
 // ------------------------
@@ -158,7 +160,13 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
   }, []);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return alert("Tag name is required");
+    if (!name.trim()){
+      toast({
+        title: "Tag name is required",
+        description: "Mandatory Check : Tag name is required",
+        variant: "destructive",
+      });
+    } //return alert("Tag name is required");
     try {
       if (editingId) {
         const { error } = await supabase.from("tags").update({ name, excerpt, icon }).eq("id", editingId);
@@ -174,7 +182,12 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
       await fetchTags();
     } catch (err: any) {
       console.error("Error saving tag:", err);
-      alert(err.message || "Error saving tag");
+      //alert(err.message || "Error saving tag");
+      toast({
+        title: "Error saving tag",
+        description: err?.message || "Something went wrong saving tag.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -187,7 +200,12 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
       await fetchTags();
     } catch (err: any) {
       console.error("Error deleting tag:", err);
-      alert(err.message || "Error deleting tag");
+      //alert(err.message || "Error deleting tag");
+      toast({
+        title: "Error deleting tag",
+        description: err?.message || "Something went wrong deleting tag.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -279,6 +297,8 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
 // Main AIStudio component
 // ------------------------
 export default function AIStudio() {
+  //initialize toast
+  const { toast } = useToast();
   // tabs
   const [tab, setTab] = useState<"generate" | "tags">("generate");
 
@@ -398,7 +418,13 @@ export default function AIStudio() {
 
   // generate draft (sends tag names array)
   async function generateDraft() {
-    if (!topic.trim()) return alert("Please enter a topic.");
+    if (!topic.trim()) {
+      toast({
+        title: "Please enter a topic.",
+        description: "Mandatory Check : Topic should not be blanck or space, should contain meaningful topic.",
+        variant: "default",
+      });
+    }//return alert("Please enter a topic.");
     setLoading(true);
     try {
       const tags = selectedTags.map((t) => t.name);
@@ -409,7 +435,13 @@ export default function AIStudio() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Generation failed");
 
-      alert(`AI job queued successfully! Job ID: ${data.jobId}`);
+      //alert(`AI job queued successfully! Job ID: ${data.jobId}`);
+      toast({
+        title: "AI job for article successfully queued",
+        description: `"Tracking Id: ${data.jobId}".`,
+        variant: "default",
+      });
+
       setTopic("");
       setSelectedTags([]);
       setTone("Technical");
@@ -418,7 +450,12 @@ export default function AIStudio() {
       loadAllTags();
     } catch (err: any) {
       console.error("Error generating draft:", err);
-      alert(err?.message || "Error generating draft.");
+      //alert(err?.message || "Error generating draft.");
+        toast({
+        title: "Error generating draft.",
+        description: err?.message || "Something went wrong generating draft.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -430,14 +467,40 @@ export default function AIStudio() {
     if (publishing) return;
 
     const alreadyPublished = Boolean(job.published_article_id) || job.status === "published";
-    if (alreadyPublished) return alert("Article already published.");
-    if (job.status !== "completed") return alert("This job is not completed yet.");
-
+    if (alreadyPublished) {
+      toast({
+        title: "Article already published",
+        description: "This article has already been published and cannot be published again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (job.status !== "completed") {
+      toast({
+        title: "This job is not completed yet.",
+        description: "This job is not completed yet, Please try after sometime.",
+        variant: "destructive",
+      });
+      return;
+    }
     const resultJson = job.result_json;
-    if (!resultJson || !resultJson.content) return alert("No structured result found. The job must include result_json.content.");
+    if (!resultJson || !resultJson.content) {
+      //return alert("No structured result found. The job must include result_json.content.");
+      toast({
+        title: "No JSON structure found.",
+        description: "No structured result found. The job must include result_json.content.",
+        variant: "destructive",
+      });
+    }
 
     const title = resultJson.title?.trim() || job.topic;
-    if (!title) return alert("Missing title for article.");
+    if (!title){
+      toast({
+        title: "Missing title for article.",
+        description: "Generate Article does not have a title, Please regenerate or contact support.",
+        variant: "destructive",
+      });
+    }//return alert("Missing title for article.");
     const slug = slugify(title);
 
     if (!confirm(`Publish article "${title}" with slug "${slug}"?`)) return;
@@ -455,13 +518,23 @@ export default function AIStudio() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Publish failed");
 
-      alert("Article published successfully!");
+      //alert("Article published successfully!");
+      toast({
+        title: "Article sent for review successfully!",
+        description: "Please check Admin > Article (tab) > AI Draft (sub-tab) to review to validate the draft.",
+        variant: "destructive",
+      });
       setSelectedJob(null);
       setReviewNotes("");
       //fetchJobs();
     } catch (err: any) {
       console.error("Publish error:", err);
-      alert(err?.message || "Failed to publish article.");
+      //alert(err?.message || "Failed to publish article.");
+        toast({
+        title: "Failed to publish article for review",
+        description: err?.message || "Something went wrong while sending draft for review.",
+        variant: "destructive",
+      });
     } finally {
       setPublishing(false);
     }
@@ -480,13 +553,23 @@ export default function AIStudio() {
       }).eq("id", job.id);
 
       if (error) throw error;
-      alert("Draft rejected.");
+      //alert("Draft rejected.");
+      toast({
+        title: "Draft Rejected",
+        description: "The draft has been successfully rejected.",
+        variant: "destructive",
+      });
       setSelectedJob(null);
       setReviewNotes("");
       //fetchJobs();
     } catch (err) {
       console.error("Reject error:", err);
-      alert("Failed to reject draft.");
+      //alert("Failed to reject draft.");
+      toast({
+        title: "Draft Rejection Failed.",
+        description: err?.message || "Something went wrong.",
+        variant: "destructive",
+      });
     }
   }
 
@@ -594,7 +677,7 @@ async function fetchStatusCounts() {
           <Card className="p-6 space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">AI Studio</h2>
-              <Button variant="outline" onClick={() => { fetchJobs(); loadAllTags(); }} className="flex items-center gap-2"><RefreshCcw className="w-4 h-4" /> Refresh</Button>
+              <Button variant="outline" onClick={() => { fetchJobsByStatus(); loadAllTags(); }} className="flex items-center gap-2"><RefreshCcw className="w-4 h-4" /> Refresh</Button>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">

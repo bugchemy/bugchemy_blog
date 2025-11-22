@@ -49,15 +49,32 @@ export default function Markdown({ content }: { content: string }) {
           );
         },
         pre({ children }) {
-          return <>{children}</>;
+          return (
+            <pre className="bg-muted rounded-md p-4 overflow-x-auto my-4">
+              {children}
+            </pre>
+          );
         },
+
         p({ children, className }) {
+          // Avoid wrapping block-level code or pre elements inside <p>
+          if (
+            React.Children.toArray(children).some(
+              (child: any) =>
+                child?.type === "pre" ||
+                child?.props?.className?.includes("code-block")
+            )
+          ) {
+            return <>{children}</>; // <-- no <p> wrapper
+          }
+
           return (
             <p className={cn("leading-7 mb-4", className)}>
               {children}
             </p>
           );
         },
+
         ul({ children, className }) {
           return (
             <ul className={cn("list-disc list-inside space-y-2 mb-4 ml-2", className)}>

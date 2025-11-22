@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 import SEO from "@/components/SEO";
+import { Toaster , ToastClose } from "@/components/ui/toaster";
 
 function Logo({ className = "" }: { className?: string }) {
   return (
@@ -575,7 +576,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         }}
       />
       {!isAuthPage && <Header />}
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">{children} <Toaster /></main>
       {!isAuthPage && <Footer />}
     </div>
   );

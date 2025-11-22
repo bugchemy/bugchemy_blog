@@ -37,6 +37,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { LogoLoader } from "@/components/LogoLoader";
+import { useToast } from "@/hooks/use-toast";
 
 const ComponentSection = ({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) => (
   <Card className="mb-8">
@@ -415,7 +416,13 @@ export default function UIComponents() {
                   <Progress value={progressValue} className="h-2" />
                 </div>
                 <Button
-                  onClick={() => setProgressValue(Math.min(progressValue + 20, 100))}
+                  onClick={() => {setProgressValue(Math.min(progressValue + 20, 100));
+                    toast({
+                    title: "Test Toast",
+                    description: "Description for Test Toast",
+                    variant: "destructive",
+                  });
+                  }}
                   size="sm"
                 >
                   Increment Progress
