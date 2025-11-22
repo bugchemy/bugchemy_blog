@@ -26,6 +26,18 @@ import {
 import { Icon } from "@iconify/react";
 import { LogoLoader } from "@/components/LogoLoader";
 
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { Pagination, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
+
 // ------------------------
 // Types
 // ------------------------
@@ -270,6 +282,17 @@ export default function AIStudio() {
   // tabs
   const [tab, setTab] = useState<"generate" | "tags">("generate");
 
+  const [filterStatus, setFilterStatus] = useState<"processing" | "completed" | "published" | "rejected" | "all" > ("completed");
+  
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+  setPage(1); 
+  }, [filterStatus]);
+
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10;
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
   // generator states
   const [topic, setTopic] = useState("");
   const toneOptions = ["Technical", "Conversational", "Beginner-Friendly", "Advanced Expert", "SEO-Optimized", "Storytelling"];
@@ -318,6 +341,7 @@ export default function AIStudio() {
   }
 
   // fetch jobs
+  {/** 
   async function fetchJobs() {
     try {
       const { data, error } = await supabase.from("ai_jobs").select("*").order("created_at", { ascending: false }).limit(200);
@@ -328,6 +352,7 @@ export default function AIStudio() {
       alert("Failed to load jobs (see console).");
     }
   }
+  */}
 
   // fetch logs
   async function fetchLogs(jobId: string) {
@@ -342,7 +367,9 @@ export default function AIStudio() {
 
   useEffect(() => {
     loadAllTags();
-    fetchJobs();
+    //fetchJobs();
+    fetchJobsByStatus();
+    fetchStatusCounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -387,7 +414,7 @@ export default function AIStudio() {
       setSelectedTags([]);
       setTone("Technical");
       setLength("Medium");
-      fetchJobs();
+      //fetchJobs();
       loadAllTags();
     } catch (err: any) {
       console.error("Error generating draft:", err);
@@ -431,7 +458,7 @@ export default function AIStudio() {
       alert("Article published successfully!");
       setSelectedJob(null);
       setReviewNotes("");
-      fetchJobs();
+      //fetchJobs();
     } catch (err: any) {
       console.error("Publish error:", err);
       alert(err?.message || "Failed to publish article.");
@@ -456,12 +483,92 @@ export default function AIStudio() {
       alert("Draft rejected.");
       setSelectedJob(null);
       setReviewNotes("");
-      fetchJobs();
+      //fetchJobs();
     } catch (err) {
       console.error("Reject error:", err);
       alert("Failed to reject draft.");
     }
   }
+
+    async function fetchJobsByStatus() {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("ai_jobs")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (filterStatus !== "all") {
+        query = query.eq("status", filterStatus);
+      }
+
+      const { data, count, error } = await query;
+
+      if (!error) {
+        setJobs(data || []);
+        setTotalCount(count || 0);
+
+        const maxPage = Math.max(1, Math.ceil((count || 0) / pageSize));
+
+        if (page > maxPage) {
+          setPage(maxPage); // 🔥 Keep page valid
+        }
+      }
+    }
+
+
+useEffect(() => {
+  fetchJobsByStatus();
+}, [filterStatus, page]);
+
+function openJobDrawer(job: AIJob) {
+  setSelectedJob(job);
+  fetchLogs(job.id);
+}
+
+function closeJobDrawer() {
+  setSelectedJob(null);
+}
+
+function nextPage() {
+  const maxPage = Math.max(1, Math.ceil(totalCount / pageSize));
+  if (page < maxPage) {
+    setPage(page + 1);
+  }
+}
+
+function prevPage() {
+  if (page > 1) {
+    setPage(page - 1);
+  }
+}
+
+
+async function fetchStatusCounts() {
+  const statuses = ["processing", "completed", "published", "rejected"];
+  const counts: Record<string, number> = {};
+
+  for (const status of statuses) {
+    const { count } = await supabase
+      .from("ai_jobs")
+      .select("*", { count: "exact", head: true })
+      .eq("status", status);
+
+    counts[status] = count || 0;
+  }
+
+  // Also get "all"
+  const { count: all } = await supabase
+    .from("ai_jobs")
+    .select("*", { count: "exact", head: true });
+
+  counts["all"] = all || 0;
+
+  setStatusCounts(counts);
+}
+
 
   // Render
   return (
@@ -597,112 +704,183 @@ export default function AIStudio() {
           </Card>
 
           {/* Job List */}
-          <Card className="p-6 space-y-4">
-            <h3 className="text-lg font-semibold">Generated Drafts</h3>
-            {jobs.length === 0 ? (<p>No drafts yet.</p>) : (
-              <div className="grid gap-3">
-                {jobs.map((job) => (
-                  <Card key={job.id} className={`p-4 cursor-pointer hover:border-primary transition ${selectedJob?.id === job.id ? "border-primary" : ""}`} onClick={() => { setSelectedJob(job); fetchLogs(job.id); }}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold text-base">{job.result_json?.title || job.topic}</h4>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge variant="outline">{job.result_json?.reading_duration ? `${job.result_json.reading_duration} min` : job.length}</Badge>
-                          <Badge variant="outline">{job.tone}</Badge>
-                          {job.model && <Badge variant="secondary">{job.model}</Badge>}
-                          {(job.result_json?.tags || job.tags || []).slice(0, 3).map((t) => (<Badge key={t}>{t}</Badge>))}
-                        </div>
+          {/* ======== Generated Drafts Section with Tabs, Pagination & Drawer ======== */}
+            <Card className="p-6 space-y-4">
+              <h3 className="text-lg font-semibold">Generated Drafts</h3>
+
+              {/* Status Tabs */}
+              <Tabs value={filterStatus} onValueChange={(val) => setFilterStatus(val as any)}>
+              <TabsList>
+                <TabsTrigger value="processing">
+                  Processing ({statusCounts.processing || 0})
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed ({statusCounts.completed || 0})
+                </TabsTrigger>
+                <TabsTrigger value="published">
+                  Published ({statusCounts.published || 0})
+                </TabsTrigger>
+                <TabsTrigger value="rejected">
+                  Rejected ({statusCounts.rejected || 0})
+                </TabsTrigger>
+                <TabsTrigger value="all">
+                  All ({statusCounts.all || 0})
+                </TabsTrigger>
+              </TabsList>
+
+
+                <TabsContent value={filterStatus}>
+                  {jobs.length === 0 ? ( <div className="text-center py-10 text-muted-foreground">
+                        <p className="text-sm">No drafts found in this category.</p>
                       </div>
-                      <Badge>{job.published_article_id ? "published" : job.status}</Badge>
+                    )  : (
+                    <div className="grid gap-3">
+                      {jobs.map((job) => (
+                        <Card
+                          key={job.id}
+                          className="p-4 cursor-pointer hover:border-primary transition"
+                          onClick={() => openJobDrawer(job)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-semibold text-base line-clamp-1">{job.result_json?.title || job.topic}</h4>
+                              <div className="flex gap-2 mt-1 flex-wrap text-xs">
+                                <Badge variant="outline">{job.tone}</Badge>
+                                {job.model && <Badge variant="secondary">{job.model}</Badge>}
+                                {(job.result_json?.tags || job.tags || []).slice(0, 3).map((t) => (
+                                  <Badge key={t}>{t}</Badge>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {new Date(job.created_at!).toLocaleString()}
+                              </p>
+                            </div>
+                            <Badge
+                              className="capitalize"
+                              variant={
+                                job.status === "completed"
+                                  ? "secondary"
+                                  : job.status === "published"
+                                  ? "default"
+                                  : job.status === "processing"
+                                  ? "outline"
+                                  : "destructive"
+                              }
+                            >
+                              {job.published_article_id ? "published" : job.status}
+                            </Badge>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
-                  </Card>
+                  )}
+
+                  {/* Pagination */}
+                  <div className="fgrid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="flex justify-center items-center w-full mt-4">
+                      <span className="text-sm text-muted-foreground">
+                        Page {Math.min(page, Math.ceil(totalCount / pageSize) || 1)} of {Math.max(1, Math.ceil(totalCount / pageSize))}
+                      </span>
+                    </div>
+                    <Pagination>
+                      <PaginationPrevious onClick={prevPage} disabled={page === 1} />
+
+                      <PaginationNext
+                        onClick={nextPage}
+                        disabled={page >= Math.ceil(totalCount / pageSize) || jobs.length === 0}
+                      />
+                    </Pagination>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </Card>
+
+
+          {/* Selected Draft / Review */}
+          {/* ======= Drawer Panel for Selected Job ======= */}
+          <Sheet open={Boolean(selectedJob)} onOpenChange={closeJobDrawer}>
+          <SheetContent
+            side="right"
+            className={`
+              fixed inset-0 
+              w-screen h-screen 
+              max-w-none !max-w-none  /* ⛔ overrides internal max-width */
+              p-6 overflow-y-auto 
+              bg-background text-foreground 
+              transition-all
+              rounded-none shadow-none
+            `}
+          >
+            {/* ---- Custom Close Button ---- 
+            <button
+              onClick={closeJobDrawer}
+              className="absolute right-4 top-4 z-50 p-2 rounded-full hover:bg-muted"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            */}
+
+            {/* ---- Header ---- */}
+            <div className="max-w-4xl mx-auto mt-10">
+              <SheetTitle className="text-3xl font-bold leading-tight">
+                {selectedJob?.result_json?.title || selectedJob?.topic}
+              </SheetTitle>
+              <SheetDescription className="text-sm text-muted-foreground mt-1">
+                {readingMinutes} min read
+              </SheetDescription>
+            </div>
+
+            {/* ---- Tags ---- */}
+            {selectedJob && (
+              <div className="max-w-4xl mx-auto flex flex-wrap gap-2 mt-4 mb-6">
+                {(selectedJob.result_json?.tags || selectedJob.tags || []).map((t) => (
+                  <Badge key={t}>{t}</Badge>
                 ))}
               </div>
             )}
-          </Card>
 
-          {/* Selected Draft / Review */}
-          {selectedJob && (
-            
-            <Card className="p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Review: {selectedJob.result_json?.title || selectedJob.topic}</h3>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-muted-foreground">{readingMinutes} min read</div>
-                  <div>
-                    <button
-                      aria-label="Toggle preview"
-                      onClick={() => setPreviewMode(!previewMode)}
-                      className="p-2 rounded-md hover:bg-muted"
-                      title="Toggle preview"
-                    >
-                      {previewMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                    <button
-                      aria-label="Toggle dark mode"
-                      onClick={() => setDarkMode(!darkMode)}
-                      className="p-2 rounded-md hover:bg-muted"
-                      title="Toggle dark/light"
-                    >
-                      {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <Button variant="ghost" onClick={() => setSelectedJob(null)}>Close</Button>
-                </div>
-              </div>
+            {/* ---- Cover Image ---- */}
+            {selectedJob?.result_json?.image_url && (
+              <img
+                src={selectedJob.result_json.image_url}
+                className="w-full max-h-96 object-cover mb-6"
+              />
+            )}
 
-              {selectedJob.result_json?.image_url || selectedJob.result_cover_url ? (
-                <img src={selectedJob.result_json?.image_url || selectedJob.result_cover_url} className="rounded-lg w-full max-h-56 object-cover" alt="Cover" />
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><ImageIcon className="w-4 h-4" /> No cover image</div>
-              )}
+            {/* ---- Content ---- */}
+            <div className={`${darkMode ? "prose-invert" : "prose"} max-w-4xl mx-auto`}>
+              <Markdown content={selectedJob?.result_json?.content || "*No content available.*"} />
+            </div>
 
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">{selectedJob.result_json?.reading_duration ? `${selectedJob.result_json.reading_duration} min read` : `${readingMinutes} min read`}</div>
-                <div className="flex flex-wrap gap-2">{(selectedJob.result_json?.tags || selectedJob.tags || []).map((t) => <Badge key={t}>{t}</Badge>)}</div>
-              </div>
+            {/* ---- Footer Actions ---- */}
+            <div className="max-w-4xl mx-auto flex justify-end gap-4 mt-10 mb-6">
+              <Button
+                onClick={() => approveAndPublish(selectedJob!)}
+                disabled={publishing || selectedJob?.status !== "completed"}
+              >
+                {publishing ? <Loader2 className="animate-spin w-4 h-4" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                Publish
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => rejectDraft(selectedJob!)}
+                disabled={selectedJob?.status === "published"}
+              >
+                <XCircle className="w-4 h-4 mr-2" /> Reject
+              </Button>
+            </div>
+          </SheetContent>
 
-              {/* Preview toggle */}
-              <div>
-                {previewMode ? (
-                  <Markdown content={selectedJob.result_json?.content || selectedJob.result_summary || "*Draft not ready yet...*"} />
-                ) : (
-                  <Textarea value={selectedJob.result_json?.content || selectedJob.result_summary || ""} readOnly rows={16} />
-                )}
-              </div>
+          </Sheet>
 
-              {jobLogs.length > 0 && (
-                <div className="bg-muted/30 rounded-md p-3 text-sm border">
-                  <h4 className="font-semibold mb-2">🧾 Job Activity Log</h4>
-                  <ul className="space-y-1">
-                    {jobLogs.map((log) => (
-                      <li key={log.id}>
-                        <span className="text-muted-foreground">{new Date(log.created_at).toLocaleString()} — <strong className="text-primary">{log.event}</strong></span>
-                        {log.message && <div className="text-xs ml-3">{log.message}</div>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
-              <div className="space-y-2">
-                <Label>Review Notes (optional)</Label>
-                <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} />
-              </div>
-
-              <div className="flex gap-3">
-                <Button onClick={() => approveAndPublish(selectedJob)} disabled={publishing || selectedJob.status !== "completed" || Boolean(selectedJob.published_article_id)}>
-                  {publishing ? (<span className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /> Publishing...</span>) : (<><CheckCircle2 className="w-4 h-4 mr-1" />Submit for Review</>)}
-                </Button>
-
-                <Button variant="destructive" onClick={() => rejectDraft(selectedJob)} disabled={Boolean(selectedJob.published_article_id) || selectedJob.status === "published"}>
-                  <XCircle className="w-4 h-4 mr-1" /> Reject
-                </Button>
-              </div>
-            </Card>
-          )}
         </>
       )}
+
+
+
+
+
     </div>
   );
 }
