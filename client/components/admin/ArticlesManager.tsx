@@ -153,6 +153,9 @@ export default function ArticlesManager() {
 
   async function handleSave() {
     try {
+    const previousStatus = article.status;
+    const previousVisibility = article.visibility;
+    const isNew = !article.id;
       let effectiveUser = user ?? currentUser ?? null;
       if (!effectiveUser) {
         const { data } = await supabase.auth.getUser();
@@ -164,8 +167,6 @@ export default function ArticlesManager() {
         toast({ variant: "destructive", title: "User not found", description: "Please wait or re-login." });
         return;
       }
-
-      const isNew = !article.id;
       const payload: any = {
         title: article.title,
         slug: article.slug || generateSlug(article.title),
@@ -186,7 +187,7 @@ export default function ArticlesManager() {
         if (error) throw error;
         savedArticle = data;
       } else {
-        const { data, error } = await supabase.from("articles").update(payload).eq("id", article.id).select().single();
+        const { data, error } = await supabase.from("articles").update(payload).eq("id", article.id).select("*").single();
         if (error) throw error;
         savedArticle = data;
       }
@@ -211,7 +212,24 @@ export default function ArticlesManager() {
         }
       }
 
-      toast({ title: isNew ? "Article created!" : "Article updated!", description: `Your article "${article.title}" was saved.` });
+      const changes: string[] = [];
+      if (!isNew && savedArticle) {
+        if (previousStatus !== savedArticle.status) {
+          changes.push(`Status → "${savedArticle.status}"`);
+        }
+        if (previousVisibility !== savedArticle.visibility) {
+          changes.push(`Visibility → "${savedArticle.visibility}"`);
+        }
+      }
+
+      toast({
+        title: isNew ? "Article created!" : "Article updated!",
+        description:
+          changes.length > 0
+            ? `Your article "${savedArticle.title || article.title}" was saved. ${changes.join(" | ")}`
+            : `Your article "${savedArticle.title || article.title}" was saved.`,
+        variant: "default",
+      });
       fetchArticles();
       handleCancel();
     } catch (err: any) {

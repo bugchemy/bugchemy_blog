@@ -149,6 +149,11 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
       onTagsChange?.(combined);
     } catch (err) {
       console.error("Error fetching tags:", err);
+      toast({
+        title: "Error fetching tag",
+        description: err?.message || "Something went wrong fetching tag.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -352,6 +357,11 @@ export default function AIStudio() {
       const { data, error } = await supabase.from("tags").select("id, name, icon, excerpt");
       if (error) {
         console.error("Failed load tags", error);
+      toast({
+        title: "Error loading tag",
+        description: err?.message || "Something went wrong loading tag.",
+        variant: "destructive",
+      });
         return;
       }
       setAllTags(data || []);
@@ -382,6 +392,11 @@ export default function AIStudio() {
       setJobLogs((data || []) as AIJobLog[]);
     } catch (err) {
       console.error("Error fetching logs:", err);
+      toast({
+        title: "Error fetching logs",
+        description: err?.message || "Something went wrong fetching logs, check edge function logs.",
+        variant: "destructive",
+      });
     }
   }
 
@@ -657,7 +672,7 @@ async function fetchStatusCounts() {
   return (
     <div className="space-y-6">
       {/* top control bar */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex gap-2">
           <Button variant={tab === "generate" ? "default" : "ghost"} onClick={() => setTab("generate")}>Generate Article</Button>
           <Button variant={tab === "tags" ? "default" : "destructive"} onClick={() => setTab("tags")}>Manage Tags</Button>
@@ -764,7 +779,7 @@ async function fetchStatusCounts() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
               <Button onClick={generateDraft} disabled={loading || !topic.trim()}>
                 {loading ? (<span className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4" /> Generating...</span>) : ("Queue AI Draft")}
               </Button>
@@ -780,7 +795,7 @@ async function fetchStatusCounts() {
                    Manage Tags
                   </Button>
 
-              <div className="ml-auto text-sm text-muted-foreground">
+              <div className="mt-2 sm:mt-0 sm:ml-auto text-sm text-muted-foreground break-words">
                 {selectedTags.length > 0 && <span>Selected tags: {selectedTags.map(t => t.name).join(", ")}</span>}
               </div>
             </div>
@@ -793,7 +808,7 @@ async function fetchStatusCounts() {
 
               {/* Status Tabs */}
               <Tabs value={filterStatus} onValueChange={(val) => setFilterStatus(val as any)}>
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-1 lg:gap-2 h-auto flex-wrap">
                 <TabsTrigger value="processing">
                   Processing ({statusCounts.processing || 0})
                 </TabsTrigger>
@@ -859,7 +874,7 @@ async function fetchStatusCounts() {
                   )}
 
                   {/* Pagination */}
-                  <div className="fgrid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-4 sm:flex sm:justify-between sm:items-center flex-col sm:flex-row">
                     <div className="flex justify-center items-center w-full mt-4">
                       <span className="text-sm text-muted-foreground">
                         Page {Math.min(page, Math.ceil(totalCount / pageSize) || 1)} of {Math.max(1, Math.ceil(totalCount / pageSize))}

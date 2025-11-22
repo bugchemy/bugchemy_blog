@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Trash2, Edit2, RefreshCcw } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { LogoLoader } from "@/components/LogoLoader";
+import { useToast } from "@/hooks/use-toast";
 
 interface Tag {
   id: number;
@@ -31,7 +32,7 @@ export default function TagManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const slug = slugify(name);
-
+  const { toast } = useToast();
   // 🧭 Fetch all tags with article counts
   const fetchTags = async () => {
     setLoading(true);
@@ -60,6 +61,11 @@ export default function TagManager() {
       setTags(combined);
     } catch (err) {
       console.error("Error fetching tags:", err);
+       toast({
+        title: "Error fetching tags",
+        description: err?.message || "Something went wrong tags.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -91,9 +97,19 @@ export default function TagManager() {
       setIcon("");
       setEditingId(null);
       fetchTags();
+      toast({
+        title: "Tag Updated.",
+        description: `${name}`,
+        variant: "default",
+      });
     } catch (err: any) {
       console.error("Error saving tag:", err);
-      alert(err.message || "Error saving tag");
+      //alert(err.message || "Error saving tag");
+      toast({
+        title: "Error saving tags",
+        description: err?.message || "Something went wrong saving tags.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -106,9 +122,18 @@ export default function TagManager() {
       const { error } = await supabase.from("tags").delete().eq("id", id);
       if (error) throw error;
       fetchTags();
+      toast({
+        title: "Tag Deleted",
+        variant: "destructive",
+      });
     } catch (err: any) {
       console.error("Error deleting tag:", err);
       alert(err.message || "Error deleting tag");
+       toast({
+        title: "Error deleting tags",
+        description: err?.message || "Something went deleting tags.",
+        variant: "destructive",
+      });
     }
   };
 
