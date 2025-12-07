@@ -132,59 +132,68 @@ serve(async (req: Request) => {
       }
     }
 
-    // Tags upsert/collect ids
-    const tagIds: number[] = [];
+// Tags upsert/collect ids (case-insensitive + de-dupe)
+const tagIds: number[] = [];
 
-    // fetch existing tags
-    if (tagsFromResult.length > 0) {
-      const { data: foundTags, error: findErr } = await admin
+if (tagsFromResult.length > 0) {
+  // 1) normalize + de-duplicate tag names before lookup
+  const uniqueTags = Array.from(
+    new Map(
+      tagsFromResult.map((raw) => [raw.toLowerCase(), raw.trim()])
+    ).values()
+  ).filter(Boolean);
+
+  for (const tagName of uniqueTags) {
+    const trimmed = tagName.trim();
+    if (!trimmed) continue;
+
+    // 2) Try to find tag case-insensitively
+    const { data: existing, error: findErr } = await admin
+      .from("tags")
+      .select("id, name")
+      .ilike("name", trimmed) // <-- 🟢 case-insensitive match
+      .maybeSingle();
+
+    if (findErr) {
+      console.error("Error finding tag:", trimmed, findErr);
+      return jsonResponse(
+        { success: false, error: "Failed to query tags" },
+        500
+      );
+    }
+
+    if (existing?.id) {
+      tagIds.push(existing.id);
+      continue;
+    }
+
+    // 3) Not found → insert new tag
+    const { data: inserted, error: insertErr } = await admin
+      .from("tags")
+      .insert({ name: trimmed })
+      .select("id")
+      .maybeSingle();
+
+    if (insertErr) {
+      console.warn("Insert failed, retrying lookup:", trimmed, insertErr);
+
+      // 4) Race-safe fallback — recheck with ilike
+      const { data: recheck } = await admin
         .from("tags")
         .select("id, name")
-        .in("name", tagsFromResult)
-        .limit(1000);
+        .ilike("name", trimmed)
+        .maybeSingle();
 
-      if (findErr) {
-        console.error("Error finding tags:", findErr);
-        return jsonResponse({ success: false, error: "Failed to query tags" }, 500);
+      if (recheck?.id) {
+        tagIds.push(recheck.id);
+      } else {
+        console.error("Failed to insert or recover tag:", trimmed);
       }
-
-      const existingNameToId: Record<string, number> = {};
-      (foundTags || []).forEach((t: any) => {
-        existingNameToId[t.name.toLowerCase()] = t.id;
-      });
-
-      for (const t of tagsFromResult) {
-        const lower = t.toLowerCase();
-        if (existingNameToId[lower]) {
-          tagIds.push(existingNameToId[lower]);
-          continue;
-        }
-        // create tag
-        const { data: inserted, error: insertErr } = await admin
-          .from("tags")
-          .insert({ name: t })
-          .select("id")
-          .limit(1)
-          .maybeSingle();
-        if (insertErr) {
-          // race — try fetch again
-          const { data: recheck } = await admin
-            .from("tags")
-            .select("id, name")
-            .eq("name", t)
-            .limit(1)
-            .maybeSingle();
-          if (recheck && recheck.id) {
-            tagIds.push(recheck.id);
-          } else {
-            console.error("Failed to insert or find tag:", t, insertErr);
-          }
-        } else if (inserted && inserted.id) {
-          tagIds.push(inserted.id);
-          existingNameToId[lower] = inserted.id;
-        }
-      }
+    } else if (inserted?.id) {
+      tagIds.push(inserted.id);
     }
+  }
+}
 
     // Unique slug
     const baseSlug = slugify(title).slice(0, 190) || `article-${Date.now()}`;
