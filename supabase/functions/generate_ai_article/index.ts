@@ -13,6 +13,10 @@ const corsHeaders = {
 
 // Helper: upload image to Supabase Storage (keeps your original)
 async function uploadImageToSupabase(supabase: any, imageUrl: string, topic: string) {
+  if (!imageUrl || !imageUrl.startsWith("http")) {
+    console.error("🚫 Skipping upload — invalid image URL:", imageUrl);
+    return null;
+  }
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
@@ -27,6 +31,8 @@ async function uploadImageToSupabase(supabase: any, imageUrl: string, topic: str
         upsert: false,
         contentType: "image/png",
       });
+
+
 
     if (error) {
       console.error("❌ Upload failed:", error);
@@ -104,10 +110,19 @@ RETURN ONLY a JSON object with keys:
 {
   "title": string,
   "subtitle": string,
-  "content": string,    // MUST be Markdown only (no HTML)
-  "tags": string[],     // lowercase, simple
-  "reading_duration": number, // minutes
-  "image_prompts": string[]
+  "content": string,
+  "tags": string[],
+  "reading_duration": number,
+  "image_prompts": string[],
+  "alt_text": string,           
+  "image_caption": string,      
+  "image_keywords": string[],  
+  "social_description": string,
+  "multilingual_titles": {  
+    "es": string,
+    "fr": string,
+    "de": string
+  }
 }
 
 IMPORTANT STRICT RULES — MARKDOWN OUTPUT (read carefully):
@@ -143,6 +158,29 @@ IMPORTANT STRICT RULES — MARKDOWN OUTPUT (read carefully):
 11) Do NOT include any invisible/control characters inside inline code. If necessary, remove them.
 12) Output MUST be parseable JSON (no stray text outside JSON).
 13) This is generated to be a part of technical blog make it have amazing user experiance while reading.
+14) Image ALT text:
+   - Must describe image AND include 1-2 SEO keywords
+   - Avoid “image of”, “picture of”
+   - Max 120 characters
+
+15) Image caption:
+   - Friendly, natural language
+   - Includes human context + SEO phrase
+   - Ideal length: 140–160 characters (Google rich snippet)
+
+16) Image keywords:
+   - Return 3-6 short keywords
+   - Must relate to topic, tech, and image concept
+   - Format as array of strings
+
+17) social_description:
+   - Write like LinkedIn/Twitter preview text
+   - Include emotional hook + core keywords
+   - Max 200 characters
+
+18) multilingual_titles:
+   - Translate ONLY the title into Spanish (es), French (fr), and German (de)
+   - Simple, professional translations
 
 Suggested tags: ${Array.isArray(tags) ? tags.join(", ") : ""}
 
@@ -188,34 +226,44 @@ Return ONLY the JSON object (no extra commentary).
     // Fallback to text if parsing fails
     const resultText = parsed?.content ? parsed.content : (completion.choices?.[0]?.message?.content ?? "No content generated.");
 
-    // Generate or fallback image
+    // Generate image
     let imageUrl: string | null = null;
     try {
-      const imagePrompt = `A clean, professional, minimalistic blog cover image about "${topic}", ${tone || "Professional"} tone.`;
+      const imagePrompt = `Professional, minimalistic blog cover image [possibly doodle-style] about "${topic}", ${tone || "Professional"} tone.`;
       const image = await openai.images.generate({
-        model: "gpt-image-1",
+        model: "gpt-image-1-mini",
         prompt: imagePrompt,
-        size: "1024x512",
+        size: "1024x1024",
+        n: 1,
       });
-      imageUrl = image.data?.[0]?.url ?? null;
+      imageUrl = image.data?.[0]?.url || null;
     } catch (imgErr) {
-      console.warn("⚠️ Image generation failed, fallback to Unsplash.", imgErr);
-      imageUrl = `${UNSPLASH_FALLBACK}`;
+      console.warn("⚠️ Image generation failed:", imgErr);
+      imageUrl = null; // No fallback
     }
 
-    const storedUrl = await uploadImageToSupabase(supabase, imageUrl, topic);
-    const finalImageUrl = storedUrl || imageUrl;
+    // Upload only if valid image URL
+    let finalImageUrl = imageUrl;
+    if (imageUrl) {
+      finalImageUrl = await uploadImageToSupabase(supabase, imageUrl, topic);
+    }
 
     // Build result_json safely
     const result_json = {
-      title: parsed?.title || parsed?.headline || topic,
-      subtitle: parsed?.subtitle || parsed?.subtitle_text || null,
+      title: parsed?.title || topic,
+      subtitle: parsed?.subtitle || null,
       content: parsed?.content || resultText,
-      tags: Array.isArray(parsed?.tags) ? parsed.tags : (Array.isArray(tags) ? tags : []),
+      tags: Array.isArray(parsed?.tags) ? parsed.tags : (tags || []),
       reading_duration: parsed?.reading_duration ?? null,
-      image_url: parsed?.image_url ?? finalImageUrl,
+      image_url: finalImageUrl,
+      alt_text: parsed?.alt_text || null,
+      image_caption: parsed?.image_caption || null,
+      image_keywords: parsed?.image_keywords || [],
+      social_description: parsed?.social_description || null,
+      multilingual_titles: parsed?.multilingual_titles || {},
       model,
-    };
+};
+
 
     // Update ai_job row with results
     await supabase
