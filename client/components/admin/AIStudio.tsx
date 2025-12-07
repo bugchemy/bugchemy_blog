@@ -692,7 +692,7 @@ async function fetchStatusCounts() {
           <Card className="p-6 space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">AI Studio</h2>
-              <Button variant="outline" onClick={() => { fetchJobsByStatus(); loadAllTags(); }} className="flex items-center gap-2"><RefreshCcw className="w-4 h-4" /> Refresh</Button>
+              <Button variant="outline" onClick={() => { fetchJobsByStatus(); loadAllTags(); fetchStatusCounts(); }} className="flex items-center gap-2"><RefreshCcw className="w-4 h-4" /> Refresh</Button>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
