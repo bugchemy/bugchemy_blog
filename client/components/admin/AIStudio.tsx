@@ -164,37 +164,77 @@ function TagManager({ onTagsChange }: { onTagsChange?: (tags: Tag[]) => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSubmit = async () => {
-    if (!name.trim()){
+const handleSubmit = async () => {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    toast({
+      title: "Tag name is required",
+      description: "Mandatory Check : Tag name is required",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  // normalize input once
+  const normalizedInput = trimmedName.toLowerCase();
+
+  // check existing tags ignoring case + extra spaces
+  const conflictingTag = tags.find(
+    (t) => t.name.trim().toLowerCase() === normalizedInput
+  );
+
+  if (!editingId) {
+    // 👉 CREATE mode: any match is a duplicate
+    if (conflictingTag) {
       toast({
-        title: "Tag name is required",
-        description: "Mandatory Check : Tag name is required",
+        title: "Duplicate tag",
+        description: `Tag "${conflictingTag.name}" already exists (case-insensitive).`,
         variant: "destructive",
       });
-    } //return alert("Tag name is required");
-    try {
-      if (editingId) {
-        const { error } = await supabase.from("tags").update({ name, excerpt, icon }).eq("id", editingId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("tags").insert({ name, excerpt, icon });
-        if (error) throw error;
-      }
-      setName("");
-      setExcerpt("");
-      setIcon("");
-      setEditingId(null);
-      await fetchTags();
-    } catch (err: any) {
-      console.error("Error saving tag:", err);
-      //alert(err.message || "Error saving tag");
-      toast({
-        title: "Error saving tag",
-        description: err?.message || "Something went wrong saving tag.",
-        variant: "destructive",
-      });
+      return;
     }
-  };
+  } else {
+    // 👉 EDIT mode: allow same record, block others
+    if (conflictingTag && conflictingTag.id !== editingId) {
+      toast({
+        title: "Duplicate tag",
+        description: `Another tag "${conflictingTag.name}" already exists (case-insensitive).`,
+        variant: "destructive",
+      });
+      return;
+    }
+  }
+
+  try {
+    if (editingId) {
+      const { error } = await supabase
+        .from("tags")
+        .update({ name: trimmedName, excerpt, icon })
+        .eq("id", editingId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("tags")
+        .insert({ name: trimmedName, excerpt, icon });
+      if (error) throw error;
+    }
+
+    setName("");
+    setExcerpt("");
+    setIcon("");
+    setEditingId(null);
+    await fetchTags();
+  } catch (err: any) {
+    console.error("Error saving tag:", err);
+    toast({
+      title: "Error saving tag",
+      description: err?.message || "Something went wrong saving tag.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this tag and remove all article relations?")) return;

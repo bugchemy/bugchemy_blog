@@ -44,7 +44,8 @@ export default function ArticlesManager() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [Articletab, setArticleTab] = useState("draft");
+  //const [Articletab, setArticleTab] = useState("draft");
+  const [Articletab, setArticleTab] = useState<"draft" | "all_article" | "untagged_public">("draft");
 
   const [page, setPage] = useState(1);
   const pageSize = 9;
@@ -254,23 +255,28 @@ export default function ArticlesManager() {
   }
 
   const filteredArticles = useMemo(() => {
-    let base = search
-      ? articles.filter((a) => a.title.toLowerCase().includes(search.toLowerCase()))
-      : articles;
+  let base = search
+    ? articles.filter((a) =>
+        a.title.toLowerCase().includes(search.toLowerCase())
+      )
+    : articles;
 
-    if (Articletab === "draft") {
-      base = base.filter((a) => a.status === "draft");
-    } else if (Articletab === "pending") {
-      base = base.filter((a) =>
-        a.tags.some((t) =>
-          ["review", "pending", "approval", "awaiting review"].includes(
-            t.name.toLowerCase()
-          )
-        )
-      );
-    }
-    return base;
-  }, [articles, search, Articletab]);
+  if (Articletab === "draft") {
+    base = base.filter((a) => a.status === "draft");
+  } else if (Articletab === "untagged_public") {
+    // ✅ Published, Public, No tags
+    base = base.filter(
+      (a) =>
+        a.status === "published" &&
+        a.visibility === "public" &&
+        (!a.tags || a.tags.length === 0)
+    );
+  }
+  // "all_article" falls through with no extra filter
+
+  return base;
+}, [articles, search, Articletab]);
+
 
   const paginatedArticles = filteredArticles.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.ceil(filteredArticles.length / pageSize);
@@ -279,12 +285,14 @@ export default function ArticlesManager() {
     <div className="p-0 space-y-0">
 <Tabs value={Articletab} onValueChange={editing ? undefined : setArticleTab}>
   <TabsList
-    className={`grid w-full grid-cols-2 gap-2 transition-opacity duration-300 ${
+    className={`grid w-full grid-cols-3 gap-2 transition-opacity duration-300 ${
       editing ? "opacity-50 pointer-events-none" : ""
     }`}
   >
-    <TabsTrigger value="draft">AI Draft</TabsTrigger>
+    
     <TabsTrigger value="all_article">All Articles</TabsTrigger>
+    <TabsTrigger value="draft">AI Draft</TabsTrigger>
+    <TabsTrigger value="untagged_public">Untagged Public</TabsTrigger>
   </TabsList>
 
   {editing && (
@@ -348,7 +356,7 @@ export default function ArticlesManager() {
 const ArticleGrid = ({ articles, onEdit }: { articles: Article[]; onEdit: (a: Article) => void }) => (
   <div className="mt-3 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
     {articles.length === 0 ? (
-      <p className="text-center text-muted-foreground col-span-full py-6">No articles found.</p>
+      <p className="text-center text-muted-foreground col-span-full py-6">No articles found for the sub-section.</p>
     ) : (
       articles.map((a) => (
         <Card key={a.id} className="hover:shadow-lg transition">
