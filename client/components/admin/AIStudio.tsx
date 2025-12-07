@@ -329,6 +329,18 @@ export default function AIStudio() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
+    // 🔍 Tag search state
+  const [tagSearch, setTagSearch] = useState("");
+
+  // Filtered tags based on search
+  const filteredTags = useMemo(
+    () =>
+      allTags.filter((tag) =>
+        tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+      ),
+    [allTags, tagSearch]
+  );
+
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<AIJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<AIJob | null>(null);
@@ -751,31 +763,53 @@ async function fetchStatusCounts() {
                   )}
                 </div>
 
-                {/* Tags Selector List */}
-                <div className="rounded-lg border bg-muted/30 p-2 max-h-48 overflow-auto">
-                  <div className="grid gap-1">
-                    {allTags.map((tag) => {
-                      const active = !!selectedTags.find((t) => t.id === tag.id);
-                      return (
-                        <div
-                          key={tag.id}
-                          onClick={() => toggleTag(tag)}
-                          className={`
-                            flex items-center justify-between cursor-pointer px-3 py-2 rounded-md text-sm 
-                            transition-all border
-                            ${active
-                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                              : "hover:bg-muted/50 border-transparent"
-                            }
-                          `}
-                        >
-                          <span>{tag.name}</span>
-                          {active && <CheckCircle2 className="w-4 h-4" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+{/* Tags Selector List */}
+<div className="rounded-lg border bg-muted/30 p-2 max-h-64 overflow-auto space-y-2">
+  {/* 🔍 Search input */}
+  <div className="px-1">
+    <Input
+      placeholder="Search tags..."
+      value={tagSearch}
+      onChange={(e) => setTagSearch(e.target.value)}
+      className="h-8 text-sm"
+    />
+  </div>
+
+  <div className="border-t border-border/60" />
+
+  <div className="grid gap-1">
+    {filteredTags.length === 0 ? (
+      <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+        No tags found {tagSearch && <>for "<span className="font-medium">{tagSearch}</span>"</>}
+      </div>
+    ) : (
+      filteredTags.map((tag) => {
+        const active = !!selectedTags.find((t) => t.id === tag.id);
+        return (
+          <div
+            key={tag.id}
+            onClick={() => toggleTag(tag)}
+            className={`
+              flex items-center justify-between cursor-pointer px-3 py-2 rounded-md text-sm 
+              transition-all border
+              ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "hover:bg-muted/50 border-transparent"
+              }
+            `}
+          >
+            <span>{tag.name}</span>
+            {active && <CheckCircle2 className="w-4 h-4" />}
+          </div>
+        );
+      })
+    )}
+  </div>
+</div>
+
+
+
               </div>
             </div>
 
